@@ -1,0 +1,41 @@
+# Justification for KinD over K3d
+
+After comparing KinD (Kubernetes in Docker) and K3d (K3s in Docker), KinD was selected as the orchestration tool for the following reasons:
+
+- **Full Kubernetes Experience**: KinD runs upstream Kubernetes, providing an environment that closely matches production clusters. This is ideal for learning and experimentation.
+- **Feature Completeness**: KinD supports all standard Kubernetes features, making it suitable for exploring the full range of Kubernetes capabilities.
+- **Community & Documentation**: KinD is an official CNCF project with a large user base and extensive documentation, which is beneficial for troubleshooting and learning.
+- **Extensibility**: KinD allows for multi-node and multi-control-plane clusters, enabling more advanced learning scenarios.
+- **Portability**: KinD clusters can be easily reproduced on any workstation with Docker installed, aligning with the project's infrastructure-as-code goals.
+
+While K3d is lightweight and fast, it uses K3s (a trimmed-down Kubernetes distribution) and omits some features found in standard Kubernetes. For a learning-focused project, KinD offers a more authentic and comprehensive Kubernetes experience.
+
+# Overview of Logical Parts of Kubernetes
+
+Kubernetes is a container orchestration system composed of several logical components:
+
+## Control Plane Components
+- **API Server**: The front end for the Kubernetes control plane. All commands (from users or other components) go through the API server.
+- **etcd**: A distributed key-value store that holds all cluster data/state.
+- **Controller Manager**: Runs controllers that handle routine tasks (e.g., node management, replication).
+- **Scheduler**: Assigns newly created pods to nodes based on resource requirements and constraints.
+
+## Node Components
+- **Kubelet**: An agent running on each node, ensuring containers are running as specified.
+- **Kube Proxy**: Maintains network rules on nodes, enabling communication to/from pods.
+- **Container Runtime**: The software responsible for running containers (e.g., Docker, containerd).
+
+## Application Layer (User Workloads)
+- **Pods**: The smallest deployable units, which can hold one or more containers.
+- **ReplicaSets, Deployments, StatefulSets, DaemonSets**: Controllers for managing pods.
+- **Services**: Define networking and load balancing for accessing pods.
+- **ConfigMaps & Secrets**: Store configuration data and sensitive information.
+- **Namespaces**: Provide virtual clusters within a physical cluster for isolation.
+
+## "K8s" vs. "Kubernetes" vs. the Tool
+- **Kubernetes** is the full name of the system.
+- **K8s** is simply a numeronym (K + 8 letters + s) and is used as a shorthand for “Kubernetes.” It is not a distinct tool or project.
+- There is no official CLI tool called “k8s.” The main command-line tool for interacting with Kubernetes clusters is `kubectl`.
+
+**Summary:**
+“K8s” and “Kubernetes” refer to the same system; “K8s” is just an abbreviation. The tool you use to manage Kubernetes is `kubectl`.
