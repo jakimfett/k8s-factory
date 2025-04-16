@@ -22,12 +22,12 @@ resource "docker_image" "http_echo" {
 resource "docker_container" "http_echo" {
   count = var.echo_count
   name  = "echo-${count.index + 1}"
-  image = docker_image.http_echo.latest
+  image = docker_image.http_echo.name
   command = [
     "-text=Hello from echo-${count.index + 1}!"
   ]
   ports {
     internal = 5678
-    external = 808${count.index + 1}
+    external = 8081 + count.index
   }
 }
