@@ -79,3 +79,36 @@ To ensure that configuration is always authoritative and up-to-date, all service
 - **Why:** Environment variables are the most portable and infrastructure-agnostic way to inject configuration, supporting both local Docker and future Kubernetes deployments.
 - **How:** Terraform constructs the list of echo server URLs and injects them as the `ECHO_URLS` environment variable into the aggregator container.
 - **Result:** The aggregator always uses the current, authoritative configuration provided by the infrastructure layer, with no hardcoded or cached values in the application code.
+
+---
+
+# Project Structure Design
+
+The project follows a multi-service architecture with clear separation between application code and infrastructure code:
+
+```
+kubernetes-windsurf/
+├── services/           # Application services
+│   └── aggregator/     # Rust aggregator service
+│       ├── src/        # Rust source code
+│       ├── Cargo.toml  # Rust dependencies
+│       ├── Dockerfile  # Container build definition
+│       └── README.md   # Service documentation
+└── infrastructure/     # Infrastructure code
+    ├── terraform/      # Terraform configuration
+    │   ├── main.tf     # Main Terraform configuration
+    │   └── variables.tf # Terraform variables
+    └── kubernetes/     # Future Kubernetes manifests
+```
+
+**Design Rationale:**
+
+1. **Separation of Concerns**: Application code (services) is separate from infrastructure code, allowing independent development cycles and clear responsibilities.
+
+2. **Scalability**: The structure supports adding multiple services while maintaining organization.
+
+3. **Infrastructure as Code**: All infrastructure components (Docker, Terraform, Kubernetes) are defined as code in dedicated directories.
+
+4. **Migration Path**: The structure supports the planned migration from Docker/Terraform to Kubernetes by providing dedicated spaces for both configurations.
+
+5. **Documentation**: Each component includes its own documentation, with project-wide design decisions captured in this document.
