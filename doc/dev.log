@@ -39,3 +39,31 @@ Kubernetes is a container orchestration system composed of several logical compo
 
 **Summary:**
 “K8s” and “Kubernetes” refer to the same system; “K8s” is just an abbreviation. The tool you use to manage Kubernetes is `kubectl`.
+
+# Docker Build Optimization Considerations
+
+## Current Build Process
+The Rust aggregator service currently uses a multi-stage Dockerfile with dependency caching. Despite this optimization, builds still take around 2 minutes on an M2 processor. The current caching strategy:
+
+1. Copies `Cargo.toml` and `Cargo.lock` first
+2. Creates a dummy `main.rs` and runs a build to cache dependencies
+3. Copies the actual source code and rebuilds
+
+## Why Builds Still Take Time
+
+- **Partial Cache Invalidation**: When source code changes, steps after the dependency caching are invalidated
+- **Rust Compilation Time**: Rust's release builds are inherently time-consuming due to optimizations
+- **Complex Dependencies**: Axum and Hyper use extensive generics which increase compile time
+
+## Future Optimization Options
+
+1. **Development Mode Builds**: Use non-release builds for faster iteration during development
+2. **Improved Caching Strategy**: Copy just the `src` directory before the main build to better leverage caching
+   ```dockerfile
+   COPY src/ src/
+   RUN cargo build --release --lib
+   COPY . .
+   RUN cargo build --release
+   ```
+3. **Cargo Workspaces**: Organize the project as a Cargo workspace as more Rust services are added
+4. **sccache Integration**: For very large projects, consider using `sccache` for persistent compilation caching
