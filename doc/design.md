@@ -69,3 +69,13 @@ To stress test and optimize the Terraform and Kubernetes cluster, a swarm of lig
 - Optionally, configure cross-container communication for advanced stress tests.
 
 This setup provides a controlled, reproducible way to benchmark and experiment with both infrastructure-as-code and Kubernetes orchestration.
+
+---
+
+# Design Decision: Service Discovery via Environment Variables
+
+To ensure that configuration is always authoritative and up-to-date, all service discovery and inter-service communication details (such as the list of echo server addresses) are passed to the aggregator exclusively via environment variables. This approach avoids static configuration, prevents caching or stale values, and ensures that the aggregator receives its configuration dynamically at runtime from the orchestrator (Terraform/Docker).
+
+- **Why:** Environment variables are the most portable and infrastructure-agnostic way to inject configuration, supporting both local Docker and future Kubernetes deployments.
+- **How:** Terraform constructs the list of echo server URLs and injects them as the `ECHO_URLS` environment variable into the aggregator container.
+- **Result:** The aggregator always uses the current, authoritative configuration provided by the infrastructure layer, with no hardcoded or cached values in the application code.
