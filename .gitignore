@@ -1,0 +1,62 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+Cargo.lock
+!services/*/Cargo.lock
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraformrc
+terraform.rc
+.terraform.lock.hcl
+crash.log
+
+# Kubernetes
+kubeconfig
+*.kubeconfig
+.kube/
+
+# IDE and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+
+# Docker
+.docker/
+
+# Miscellaneous
+.tmp/
+tmp/
+temp/
+
+# Editor backups
+*~
+
+# Apple specific files
+.DS_Store
+._*
