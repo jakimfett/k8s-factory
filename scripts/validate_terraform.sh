@@ -145,7 +145,7 @@ test_terraform_validate() {
   fi
   
   # Navigate to terraform directory
-  cd "/Users/jakimfett/hub/dev/kubernetes-windsurf/infrastructure/terraform" || exit
+  cd "/Users/jakimfett/hub/dev/k8s-factory/infrastructure/terraform" || exit
   
   # Check terraform installation
   run_test "Terraform is installed" \
@@ -187,7 +187,7 @@ test_tflint() {
   fi
   
   # Navigate to terraform directory
-  cd "/Users/jakimfett/hub/dev/kubernetes-windsurf/infrastructure/terraform" || exit
+  cd "/Users/jakimfett/hub/dev/k8s-factory/infrastructure/terraform" || exit
   
   # Check tflint installation
   run_test "TFLint is installed" \
@@ -222,7 +222,7 @@ test_config_completeness() {
   fi
   
   # Navigate to terraform directory
-  cd "/Users/jakimfett/hub/dev/kubernetes-windsurf/infrastructure/terraform" || exit
+  cd "/Users/jakimfett/hub/dev/k8s-factory/infrastructure/terraform" || exit
   
   # Check for essential files
   run_test "Essential Terraform files exist" \

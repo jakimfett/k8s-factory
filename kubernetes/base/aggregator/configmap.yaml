@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aggregator-config
+  namespace: k8s-factory
+data:
+  ECHO_URLS: "http://echo-1.k8s-factory:5678,http://echo-2.k8s-factory:5678"

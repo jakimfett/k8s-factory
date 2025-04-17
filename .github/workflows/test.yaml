@@ -1,0 +1,38 @@
+name: Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run ShellCheck
+      uses: ludeeus/action-shellcheck@master
+      with:
+        scandir: './services/aggregator/scripts'
+        
+  terraform:
+    name: Terraform Validation
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: hashicorp/setup-terraform@v2
+    
+    - name: Terraform Format
+      run: terraform fmt -check -recursive
+      
+    - name: Terraform Init
+      run: |
+        cd infrastructure/terraform-docker-cluster
+        terraform init -backend=false
+        
+    - name: Terraform Validate
+      run: |
+        cd infrastructure/terraform-docker-cluster
+        terraform validate

@@ -87,7 +87,7 @@ To ensure that configuration is always authoritative and up-to-date, all service
 The project follows a multi-service architecture with clear separation between application code and infrastructure code:
 
 ```
-kubernetes-windsurf/
+k8s-factory/
 ├── services/           # Application services
 │   ├── aggregator/     # Rust aggregator service
 │   │   ├── src/        # Rust source code
@@ -128,7 +128,7 @@ kubernetes-windsurf/
 # Metrics Service Design
 
 ## Overview
-The metrics service provides comprehensive monitoring capabilities for the Kubernetes Windsurf project. It follows a layered architecture that separates metrics collection (Prometheus) from visualization (Grafana), with the latter being optional and configurable.
+The metrics service provides comprehensive monitoring capabilities for the k8s-factory project. It follows a layered architecture that separates metrics collection (Prometheus) from visualization (Grafana), with the latter being optional and configurable.
 
 ## Design Principles
 
@@ -344,6 +344,80 @@ The project implements a comprehensive infrastructure testing strategy to ensure
    - Ensure infrastructure matches configuration
    - Prevent configuration drift
    - Validate expected resources are created correctly
+
+---
+
+# Kubernetes Migration Strategy
+
+## Overview
+A structured strategy for migrating from a Docker-based development environment to a Kubernetes-orchestrated production system, while preserving testing capabilities and infrastructure-as-code principles.
+
+## High-Level Approach
+
+We will use a hybrid approach that leverages the strengths of both Terraform and Kubernetes:
+
+- Use Terraform to provision the Kubernetes control plane cluster regardless of deployment location (cloud, local, or on-premise)
+- Once the control plane is established, Terraform hands off to Kubernetes for workload management
+- Create a clear separation between infrastructure provisioning and application deployment
+
+## Implementation Plan
+
+1. **Infrastructure Organization**
+   - Create a distinct Terraform project directory for control plane provisioning (`infrastructure/terraform-k8s-control-plane`)
+   - Preserve the existing Terraform Docker setup by moving it to `infrastructure/testing-terraform-docker-cluster`
+   - Maintain both environments to enable comparison testing throughout the migration
+
+2. **Multi-Environment Support**
+   - Create stubs for major cloud providers that offer Terraform-initiated managed Kubernetes services
+   - Focus initial implementation on local (macOS) and on-premise (Debian) bare-metal deployments
+   - Defer implementation of cloud-based providers that incur costs until the core functionality is perfected
+
+3. **Kubernetes-Native Features Utilization**
+   - Use Kubernetes for workload scaling based on demand metrics
+   - Implement a management cluster optimized for managing a changing selection of microclusters
+   - Migrate containerized services to Kubernetes-native deployment patterns
+
+4. **CI/CD Integration**
+   - Set up GitHub Actions workflows for the new Terraform/Kubernetes deployment pipeline
+   - Fall back to existing Laminar-based build system at `build.functions.sh` if GitHub Actions require paid features
+
+## Architectural Benefits
+
+This approach:
+1. Isolates our initial test environment from our production code development
+2. Provides a comparison baseline until Kubernetes implementation reaches feature parity
+3. Leverages Terraform's strengths in infrastructure provisioning while using Kubernetes for what it does best
+4. Creates a clear separation of concerns between infrastructure and application layers
+5. Maintains infrastructure-as-code principles throughout the entire stack
+
+## File Structure
+
+```
+k8s-factory/
+├── infrastructure/
+│   ├── terraform-docker-cluster/     # Moved from current terraform/ 
+│   └── terraform-k8s-control-plane/  # New cluster provisioning
+│       ├── local/                    # macOS (minikube/kind)
+│       ├── on-premise/               # Debian bare-metal
+│       └── cloud-providers/          # Stubs for AWS, GCP, Azure
+├── kubernetes/                       # K8s manifests
+│   ├── base/                         # Common resources
+│   │   ├── namespaces.yaml
+│   │   ├── aggregator/
+│   │   │   ├── deployment.yaml
+│   │   │   ├── service.yaml
+│   │   │   └── configmap.yaml
+│   │   └── echo-services/
+│   │       └── statefulset.yaml
+│   └── overlays/                     # Environment-specific changes
+│       ├── dev/
+│       └── prod/
+└── .github/workflows/               # CI/CD workflows
+    ├── test.yaml                     # Includes Terraform, shellcheck tests
+    └── deploy.yaml                   # Environment deployment workflow
+```
+
+This structure follows GitOps best practices, enabling infrastructure-as-code principles while maintaining a clear separation between cluster provisioning (Terraform) and workload management (Kubernetes).
 
 ## Implementation Stack
 

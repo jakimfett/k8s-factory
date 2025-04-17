@@ -192,6 +192,53 @@ The containers now provide clear, detailed error messages when failures occur, i
 
 Test cases have been expanded to include port conflict detection tests, showing that our containers detect and report port conflicts correctly instead of entering restart loops.
 
+# Kubernetes Migration Strategy - 2025-04-17
+
+After completing the container lifecycle management improvements, we evaluated options for migrating to Kubernetes. This exploration raised important architectural considerations regarding the respective roles of Kubernetes and Terraform in our infrastructure.
+
+## Kubernetes vs. Terraform: Architectural Considerations
+
+The exploration revealed several key differences between direct Kubernetes management and using Terraform as an intermediary:
+
+### Direct Kubernetes Advantages
+1. **Native Kubernetes Experience**: Working directly with Kubernetes YAML manifests provides deeper understanding of Kubernetes concepts and patterns
+2. **Operational Flexibility**: Immediate feedback cycle without the plan/apply workflow, facilitating faster iteration during development
+3. **GitOps Compatibility**: Better alignment with GitOps tools like ArgoCD and Flux which work natively with Kubernetes manifests
+4. **Kubernetes-Native Tooling**: Seamless integration with kubectl, Helm, Kustomize, and the broader Kubernetes ecosystem
+5. **No State Drift Concerns**: Avoiding potential Terraform state synchronization issues with the actual cluster state
+
+### Terraform's Role in Kubernetes Infrastructure
+1. **Infrastructure Provisioning**: Terraform excels at creating the underlying infrastructure (VMs, networks) on which Kubernetes runs
+2. **Multi-Cloud Management**: Consistent approach for provisioning across different cloud providers
+3. **State Management for Core Infrastructure**: Tracking infrastructure state outside of Kubernetes
+4. **Kubernetes Bootstrap**: Handling the initial creation of control plane and worker nodes
+
+### The "Bootstrap Problem"
+A key insight from our exploration is understanding Kubernetes' "bootstrap problem":
+- Kubernetes itself doesn't create the initial cluster infrastructure
+- Something external must provision the underlying compute, network, and storage resources
+- Once a cluster exists, Kubernetes can manage workloads and even other clusters (using tools like Cluster API)
+
+## Selected Approach
+Based on these considerations, we've decided to adopt a hybrid approach that leverages the strengths of both tools:
+1. Use Terraform narrowly for provisioning the initial Kubernetes control plane
+2. Use native Kubernetes resources for all workload management
+3. Maintain the ability to deploy both locally (for development) and to cloud providers (for production)
+
+This approach gives us the full Kubernetes learning experience while still leveraging infrastructure-as-code principles for the underlying infrastructure.
+
+## File Structure and CI/CD - 2025-04-17
+
+Established optimal file structure for Kubernetes migration:
+- Separated terraform configuration for Docker vs K8s environments
+- Adopted Kustomize-compatible base/overlays pattern for K8s manifests
+- Created stubs for local, on-premise, and cloud provider deployments
+
+Additional testing and CI/CD decisions:
+- GitHub Actions free tier sufficient for our testing needs (unlimited for public repos, 2,000 minutes/month for private)
+- Added shellcheck for shell script validation
+- Configured workflow triggers for pushes to main and pull requests
+
 # Terraform Testing Options - 2025-04-16
 
 As we move toward validating our infrastructure-as-code implementation, we've investigated various options for testing Terraform configurations. Here's a comprehensive overview of the available tools and frameworks:

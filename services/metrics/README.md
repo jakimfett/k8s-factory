@@ -1,6 +1,6 @@
 # Metrics Service
 
-This service provides monitoring capabilities for the Kubernetes Windsurf project using Prometheus and Grafana.
+This service provides monitoring capabilities for the k8s-factory project using Prometheus and Grafana.
 
 ## Components
 
