@@ -23,7 +23,63 @@ This module:
 - At least 20GB of free disk space
 - Network connectivity for the server
 
-## Usage
+## Detailed Setup Instructions
+
+### Step 1: Server Preparation
+
+1. Start with a fresh Debian 12 (bookworm) installation
+
+2. Ensure you have root or sudo access on the server
+
+3. Copy your SSH public key to the server for initial access:
+   ```bash
+   # From your local machine
+   scp ~/.ssh/id_ed25519.pub root@your-server-ip:/tmp/
+   ```
+
+### Step 2: Setting Up k8s-admin User and Sudo Permissions
+
+1. Copy the setup script to the server:
+   ```bash
+   scp setup_k8s_admin.sh terraform_setup.sh k8s_admin_sudoers.conf terraform_temp_sudoers.conf root@your-server-ip:/tmp/
+   ```
+
+2. SSH into your server and run the user setup script:
+   ```bash
+   ssh root@your-server-ip
+   chmod +x /tmp/setup_k8s_admin.sh
+   /tmp/setup_k8s_admin.sh
+   ```
+
+3. Configure the permanent sudo permissions:
+   ```bash
+   # On the server as root
+   sudo visudo -f /etc/sudoers.d/k8s-admin
+   ```
+   
+   Copy and paste the contents of k8s_admin_sudoers.conf, then save and exit
+
+4. Configure the temporary sudo permissions for Terraform:
+   ```bash
+   # On the server as root
+   sudo visudo -f /etc/sudoers.d/terraform_temp
+   ```
+   
+   Copy and paste the contents of terraform_temp_sudoers.conf, then save and exit
+
+5. Run the Terraform setup script to prepare the repositories:
+   ```bash
+   chmod +x /tmp/terraform_setup.sh
+   /tmp/terraform_setup.sh
+   ```
+
+6. Verify the k8s-admin user can SSH to the server:
+   ```bash
+   # From your local machine
+   ssh k8s-admin@your-server-ip
+   ```
+
+### Step 3: Terraform Deployment
 
 1. Copy the example variables file and customize it:
    ```bash
@@ -45,6 +101,45 @@ This module:
    ```bash
    terraform apply
    ```
+
+### Step 4: Debugging Common Issues
+
+#### sudo Permission Issues:
+
+1. **Problem**: Terraform execution stops with sudo password prompt
+   
+   **Solution**: 
+   - SSH into the server and check the sudo logs:
+     ```bash
+     sudo grep sudo /var/log/auth.log | tail
+     ```
+   - Identify the command that's failing
+   - Update the terraform_temp_sudoers.conf file with the missing permission
+   - Run `sudo visudo -f /etc/sudoers.d/terraform_temp` to update
+
+2. **Problem**: sudo syntax errors when setting up permissions
+   
+   **Solution**:
+   - Use `visudo -c` to check syntax before saving
+   - For complex commands with quotes, use `k8s-admin ALL=(ALL) NOPASSWD: /path/to/command *` pattern
+
+#### Repository Issues:
+
+1. **Problem**: Package repositories not found
+   
+   **Solution**:
+   - Verify Debian version: `cat /etc/os-release`
+   - Use the correct repository URLs for your Debian version
+   - For Debian 12 (bookworm), use paths shown in terraform_setup.sh
+
+#### Containerd Configuration:
+
+1. **Problem**: containerd fails to restart
+   
+   **Solution**:
+   - Check containerd logs: `sudo journalctl -u containerd`
+   - Verify systemd cgroup driver is configured: `grep SystemdCgroup /etc/containerd/config.toml`
+   - Manually restart if needed: `sudo systemctl restart containerd`
 
 5. Connect to your Kubernetes cluster:
    ```bash
