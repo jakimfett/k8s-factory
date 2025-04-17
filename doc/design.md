@@ -39,7 +39,7 @@ Kubernetes is a container orchestration system composed of several logical compo
 ## Node Components
 - **Kubelet**: An agent running on each node, ensuring containers are running as specified.
 - **Kube Proxy**: Maintains network rules on nodes, enabling communication to/from pods.
-- **Container Runtime**: The software responsible for running containers (e.g., Docker, containerd).
+- **Container Runtime**: The software responsible for running containers. For this project, containerd is used as the container runtime on staging due to its better performance, direct CRI implementation, and improved security through a smaller attack surface.
 
 ## Application Layer (User Workloads)
 - **Pods**: The smallest deployable units, which can hold one or more containers.
@@ -260,8 +260,49 @@ The test-driven approach facilitates the future migration to Kubernetes by estab
 
 # Container Lifecycle Management and Error Handling
 
-## Overview
-A robust container lifecycle management strategy is implemented to ensure reliable operation in both development and production environments. The approach prioritizes fault detection, detailed error reporting, and graceful failure modes over silent failures or endless restart loops.
+## Security Design Principles
+
+The project follows these security design principles:
+
+1. **Principle of Least Privilege**
+   - User accounts are granted only the minimum privileges needed for their roles
+   - Kubernetes admin account has restricted sudo access with granular permissions
+   - Passwordless sudo is limited to specific Kubernetes operations only
+   - Package management and general system operations require password authentication
+
+2. **Defense in Depth**
+   - Multiple security layers protect the infrastructure
+   - Temporary elevated permissions for setup are automatically revoked after completion
+   - SSH access is secured with key-based authentication only
+   - Container runtime (containerd) has a smaller attack surface than alternatives
+
+3. **Secure Default Configuration**
+   - All configurations start from a secure baseline
+   - Network policies limit unnecessary communication
+   - Services are namespaced for logical separation
+
+## Container Runtime Selection
+
+After careful evaluation, containerd was selected as the container runtime for the following reasons:
+
+1. **Performance Advantages**
+   - More lightweight and efficient than Docker
+   - Reduced resource overhead
+   - Direct implementation of the Container Runtime Interface (CRI)
+
+2. **Security Benefits**
+   - Smaller attack surface
+   - Fine-grained security controls
+   - Designed specifically for Kubernetes workloads
+
+3. **Kubernetes Best Practices**
+   - Standard approach after Docker's deprecation in Kubernetes (via dockershim)
+   - Better integration with Kubernetes components
+   - Forward compatibility with future Kubernetes versions
+
+## Container Lifecycle Management
+
+Proper container lifecycle management is critical for system stability and resource efficiency. A robust container lifecycle management strategy is implemented to ensure reliable operation in both development and production environments. The approach prioritizes fault detection, detailed error reporting, and graceful failure modes over silent failures or endless restart loops.
 
 ## Design Principles
 

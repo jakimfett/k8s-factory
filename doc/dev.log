@@ -408,3 +408,52 @@ For our GitHub Actions workflow, we'll implement a multi-layered testing strateg
 4. **kubectl Validation**: Use kubectl's built-in validation capabilities with `--dry-run=client` to verify resource definitions
 
 This approach emphasizes standard tools over custom scripts or third-party cluster solutions, ensures comprehensive validation, and integrates well with our existing CI/CD processes. After careful consideration, we've decided to use standard Kubernetes tooling rather than introducing additional complexity with KinD or other local cluster solutions. This aligns with our goal of maintaining simplicity while maximizing learning and flexibility, and ensures our tests validate against actual Kubernetes APIs rather than simulated environments.
+
+# Security Configuration and Containerd Implementation - 2025-04-17
+
+## Container Runtime Selection and Implementation
+
+As part of our Kubernetes migration, we've made a careful assessment of container runtime options and implemented containerd, replacing the original Docker-based approach. This decision was based on several key factors:
+
+1. **Kubernetes Best Practices Alignment**
+   - Docker support in Kubernetes (via dockershim) has been deprecated
+   - containerd provides a direct Container Runtime Interface (CRI) implementation
+   - More closely follows recommended Kubernetes deployment patterns
+
+2. **Performance and Efficiency Benefits**
+   - More lightweight than Docker with reduced resource overhead
+   - Improved container startup times and runtime performance
+   - Better integration with Kubernetes components
+
+3. **Security Advantages**
+   - Smaller attack surface with fewer components
+   - More focused security model specific to container operations
+   - Better isolation between system components
+
+The implementation includes configuring containerd with the systemd cgroup driver, setting up necessary kernel modules (overlay, br_netfilter), and configuring network parameters for container networking. This approach aligns with current Kubernetes standards while maintaining compatibility with existing workloads.
+
+## Secure Access Management Design
+
+We've implemented a defense-in-depth approach to secure the Kubernetes control plane using the principle of least privilege:
+
+### Dedicated Admin User Configuration
+
+A dedicated `k8s-admin` user has been created with restricted sudo access following a hybrid security model:
+
+1. **Passwordless Access for Kubernetes Operations**
+   - Limited to specific Kubernetes commands (kubeadm, kubectl, kubelet)
+   - Controlled access to containerd service management
+   - Network configuration for Kubernetes operations
+   - Essential file operations for Kubernetes configuration
+
+2. **Password-Required Access for System Operations**
+   - Package management (apt, apt-get) requires authentication
+   - General system commands require password verification
+   - File editing with tools like tee is password-protected
+
+3. **Automated Deployment Security**
+   - Temporary elevated permissions during initial deployment
+   - Automatic revocation of temporary permissions after setup
+   - Clean separation between setup and operational permissions
+
+This approach provides a significant security improvement over standard sudo configurations while still enabling automated deployment via Terraform. It ensures that compromised credentials can't be used for general system access beyond the specific Kubernetes operations required for cluster management.

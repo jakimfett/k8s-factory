@@ -1,0 +1,26 @@
+# IP address of your Debian staging server
+server_ip = "10.0.0.100"  # Replace with your actual server IP or hostname
+
+# SSH user with sudo privileges
+ssh_user = "admin"
+
+# Path to your SSH private key for authentication
+ssh_private_key_path = "~/.ssh/id_ed25519"
+
+# Kubernetes version to install
+kubernetes_version = "1.26.1"
+
+# CIDR range for pod networking (default for Calico)
+pod_cidr = "10.244.0.0/16"
+
+# CIDR range for Kubernetes service networking
+service_cidr = "10.96.0.0/12"
+
+# Local path to store the retrieved kubeconfig
+kubeconfig_path = "~/.kube"
+
+# Enable Kubernetes dashboard for monitoring (optional)
+enable_dashboard = true
+
+# Enable metrics server for resource metrics (required for Prometheus integration)
+enable_metrics_server = true
