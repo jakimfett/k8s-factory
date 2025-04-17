@@ -31,7 +31,7 @@ resource "null_resource" "k8s_control_plane_containerd_runtime" {
   provisioner "remote-exec" {
     inline = [
       # Install containerd in non-interactive mode
-      "sudo DEBIAN_FRONTEND=noninteractive apt install -y containerd.io",
+      "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y containerd.io",
       
       # Configure containerd
       "sudo mkdir -p /etc/containerd",

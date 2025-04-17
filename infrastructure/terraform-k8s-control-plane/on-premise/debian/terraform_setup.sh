@@ -25,8 +25,8 @@ fi
 echo -e "${YELLOW}Setting up Docker repository for containerd installation...${NC}"
 
 # Install prerequisites
-apt-get update
-apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+apt update
+apt install -y apt-transport-https ca-certificates curl gnupg lsb-release
 
 # Add Docker repository (which provides containerd.io)
 install -m 0755 -d /etc/apt/keyrings
@@ -41,15 +41,15 @@ chmod a+r /etc/apt/keyrings/kubernetes-archive-keyring.gpg
 echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /" | tee /etc/apt/sources.list.d/kubernetes.list > /dev/null
 
 # Update package lists
-apt-get update
+apt update
 
 # Add temporary passwordless privileges for package installation during setup
 echo -e "${YELLOW}Adding temporary permissions for initial setup...${NC}"
 cat << EOF > /etc/sudoers.d/terraform_temp
 # Temporary permissions for initial Terraform setup
 # Allow specific sudo commands for Kubernetes setup
-$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/apt-get update
-$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/apt-get install -y *
+$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/apt update
+$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/apt install -y *
 $K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/apt-mark hold *
 $K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/containerd config default
 $K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/tee *
