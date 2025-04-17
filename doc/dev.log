@@ -49,6 +49,42 @@ The Rust aggregator service currently uses a multi-stage Dockerfile with depende
 2. Creates a dummy `main.rs` and runs a build to cache dependencies
 3. Copies the actual source code and rebuilds
 
+# Metrics Service Implementation Notes
+
+## Prometheus Integration
+The aggregator service has been instrumented with Prometheus metrics using the following Rust crates:
+
+- `prometheus` (v0.13): Core metrics library
+- `prometheusx` (v0.2): Axum integration for Prometheus
+- `lazy_static` (v1.4): For global metrics registry
+
+The metrics implementation follows these patterns:
+
+1. **Global Metrics Registry**: Using `lazy_static` to create global metrics that can be accessed from any handler
+2. **Counter and Histogram Metrics**: Tracking both request counts and response time distributions
+3. **Labeled Metrics**: Using labels to differentiate between endpoints and echo servers
+
+## Service Discovery Considerations
+
+We evaluated several approaches for monitoring echo servers:
+
+1. **Direct Instrumentation**: Adding metrics endpoints to echo servers
+   - Pros: Detailed metrics from each server
+   - Cons: Requires modifying the echo servers, which are currently using the standard hashicorp/http-echo image
+
+2. **Proxy-based Monitoring**: Using a sidecar to collect metrics
+   - Pros: No modification to echo servers
+   - Cons: Additional complexity and resource usage
+
+3. **Aggregator-based Metrics + Health Checks** (selected approach):
+   - Pros: 
+     - No modification to echo servers
+     - Metrics already collected by aggregator
+     - Simpler implementation
+   - Cons: Less detailed metrics about individual echo server internals
+
+The selected approach aligns with the project's design principles of simplicity and separation of concerns.
+
 ## Why Builds Still Take Time
 
 - **Partial Cache Invalidation**: When source code changes, steps after the dependency caching are invalidated

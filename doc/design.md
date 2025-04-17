@@ -89,14 +89,24 @@ The project follows a multi-service architecture with clear separation between a
 ```
 kubernetes-windsurf/
 ├── services/           # Application services
-│   └── aggregator/     # Rust aggregator service
-│       ├── src/        # Rust source code
-│       ├── Cargo.toml  # Rust dependencies
-│       ├── Dockerfile  # Container build definition
-│       └── README.md   # Service documentation
+│   ├── aggregator/     # Rust aggregator service
+│   │   ├── src/        # Rust source code
+│   │   ├── Cargo.toml  # Rust dependencies
+│   │   ├── Dockerfile  # Container build definition
+│   │   └── README.md   # Service documentation
+│   └── metrics/        # Metrics collection and visualization
+│       ├── prometheus/ # Prometheus configuration
+│       │   ├── prometheus.yml # Scrape configuration
+│       │   └── Dockerfile     # Prometheus container setup
+│       ├── grafana/    # Optional visualization (conditionally deployed)
+│       │   ├── provisioning/  # Dashboards and datasources
+│       │   └── Dockerfile     # Grafana container setup
+│       ├── docker-compose.yml # Local development setup
+│       └── README.md   # Metrics service documentation
 └── infrastructure/     # Infrastructure code
     ├── terraform/      # Terraform configuration
     │   ├── main.tf     # Main Terraform configuration
+    │   ├── metrics.tf  # Metrics infrastructure
     │   └── variables.tf # Terraform variables
     └── kubernetes/     # Future Kubernetes manifests
 ```
@@ -112,3 +122,53 @@ kubernetes-windsurf/
 4. **Migration Path**: The structure supports the planned migration from Docker/Terraform to Kubernetes by providing dedicated spaces for both configurations.
 
 5. **Documentation**: Each component includes its own documentation, with project-wide design decisions captured in this document.
+
+---
+
+# Metrics Service Design
+
+## Overview
+The metrics service provides comprehensive monitoring capabilities for the Kubernetes Windsurf project. It follows a layered architecture that separates metrics collection (Prometheus) from visualization (Grafana), with the latter being optional and configurable.
+
+## Design Principles
+
+1. **Separation of Concerns**
+   - **Collection Layer**: Always-on Prometheus instance for metrics collection
+   - **Visualization Layer**: Optional Grafana instance for dashboard visualization
+
+2. **Dynamic Service Discovery**
+   - Uses Docker service discovery to automatically detect echo servers
+   - No hardcoded service references, supporting dynamic scaling
+   - Future-compatible with Kubernetes service discovery mechanisms
+
+3. **Layered Monitoring Approach**
+   - **Application Metrics**: Detailed metrics from the aggregator service (request counts, response times)
+   - **Infrastructure Health**: Basic up/down monitoring of echo servers
+
+4. **Infrastructure as Code**
+   - All metrics configuration defined in code (Prometheus config, Grafana dashboards)
+   - Terraform-managed deployment with conditional visualization
+
+## Implementation Details
+
+### Aggregator Metrics
+The aggregator service is instrumented with Prometheus metrics using the `prometheus` and `prometheusx` Rust crates. It exposes:
+
+- Request counters by endpoint (`aggregator_requests_total`)
+- Response time histograms by echo server (`aggregator_response_time_ms`)
+
+### Service Discovery
+Prometheus uses Docker socket access to automatically discover and monitor echo servers:
+
+```yaml
+docker_sd_configs:
+  - host: unix:///var/run/docker.sock
+    filters:
+      - name: name
+        values: ['echo-.*']
+```
+
+This approach allows for dynamic scaling of echo servers without configuration changes.
+
+### Visualization
+Grafana provides pre-configured dashboards for visualizing the collected metrics. It is conditionally deployed based on the `enable_visualization` Terraform variable, allowing for a lightweight deployment when visualization is not needed.
