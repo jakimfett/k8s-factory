@@ -182,6 +182,26 @@ Currently, the service works perfectly when run locally but has container lifecy
 
 Today we implemented a comprehensive test-driven development infrastructure for the Kubernetes Windsurf project, focusing on the aggregator service and metrics functionality. This represents a significant step toward ensuring reliability and reproducibility as we prepare for Kubernetes migration.
 
+## Evening Update: Test Output Verbosity Improvements
+
+Further refined the test infrastructure to support both regular and verbose output modes:
+
+1. **Output Modes**:
+   - **Default (minimal)**: Shows only dots for test progress and a final summary
+   - **Verbose** (`-v` or `--verbose` flag): Shows detailed test output and container logs
+
+2. **Implementation Details**:
+   - Added command-line argument processing
+   - Redirected noisy Docker/curl output to /dev/null in non-verbose mode
+   - Made test suite headers and command output conditional
+   - Ensured errors remain visible even in non-verbose mode
+
+3. **Benefits**:
+   - Cleaner, more focused output for regular use
+   - Detailed information available when needed for debugging
+   - Consistent visual indicators (dots) to show test progress
+   - CI/CD friendly with both concise logs and detailed debug options
+
 ## Key Achievements
 
 1. **Test Script Creation**

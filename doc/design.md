@@ -185,6 +185,7 @@ The project follows a test-driven development (TDD) approach with comprehensive 
 1. **Automation First**
    - All tests are fully automated via shell scripts
    - Designed for CI/CD pipeline integration
+   - Configurable verbosity with minimal default output
    - Consistent output format with clear pass/fail indicators
 
 2. **Comprehensive Coverage**
@@ -205,8 +206,13 @@ The project follows a test-driven development (TDD) approach with comprehensive 
 ## Implementation Details
 
 ### Test Script Architecture
-The primary test script (`test_aggregator.sh`) is organized into logical test suites:
+The primary test script (`test_aggregator.sh`) is organized into logical test suites and features output verbosity control:
 
+#### Verbosity Modes
+- **Standard Mode**: Displays minimal output with progress dots and summary
+- **Verbose Mode**: Provides detailed test output and container logs (activated with `-v` or `--verbose`)
+
+#### Test Suites
 1. **Debug Script Functionality Tests**
    - Validates container start/stop/restart capabilities
    - Ensures clean environment setup and teardown
@@ -236,6 +242,9 @@ The test infrastructure relies on specific tools to enable robust testing:
   
 - **curl**: For HTTP endpoint testing
 - **docker**: For container management and inspection
+- **source**: For running individual test functions
+- **sh | bash**: For running the test script
+
 
 ### Integration with Development Workflow
 Test scripts are designed to be run at multiple stages of development:
