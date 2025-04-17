@@ -19,8 +19,8 @@ provider "ssh" {
   private_key = file(var.ssh_private_key_path)
 }
 
-# Install containerd runtime
-resource "null_resource" "install_containerd" {
+# Install containerd runtime for Kubernetes
+resource "null_resource" "k8s_control_plane_containerd_runtime" {
   connection {
     type        = "ssh"
     user        = var.ssh_user
@@ -30,8 +30,8 @@ resource "null_resource" "install_containerd" {
 
   provisioner "remote-exec" {
     inline = [
-      # Install containerd
-      "sudo apt-get install -y containerd.io",
+      # Install containerd in non-interactive mode
+      "sudo DEBIAN_FRONTEND=noninteractive apt install -y containerd.io",
       
       # Configure containerd
       "sudo mkdir -p /etc/containerd",
@@ -58,8 +58,8 @@ resource "null_resource" "install_containerd" {
 }
 
 # Install Kubernetes components
-resource "null_resource" "install_kubernetes" {
-  depends_on = [null_resource.install_containerd]
+resource "null_resource" "k8s_control_plane_components" {
+  depends_on = [null_resource.k8s_control_plane_containerd_runtime]
   
   connection {
     type        = "ssh"
@@ -84,15 +84,15 @@ resource "null_resource" "install_kubernetes" {
       
       # Install Kubernetes components
       "sudo apt-get update",
-      "sudo apt-get install -y kubelet=${var.kubernetes_version}-00 kubeadm=${var.kubernetes_version}-00 kubectl=${var.kubernetes_version}-00",
+      "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y kubelet=${var.kubernetes_version}-00 kubeadm=${var.kubernetes_version}-00 kubectl=${var.kubernetes_version}-00",
       "sudo apt-mark hold kubelet kubeadm kubectl"
     ]
   }
 }
 
 # Initialize Kubernetes control plane
-resource "null_resource" "init_kubernetes" {
-  depends_on = [null_resource.install_kubernetes]
+resource "null_resource" "k8s_control_plane_init" {
+  depends_on = [null_resource.k8s_control_plane_components]
   
   connection {
     type        = "ssh"
@@ -143,27 +143,27 @@ resource "null_resource" "init_kubernetes" {
   }
 }
 
-# Retrieve kubeconfig for local use
-resource "null_resource" "retrieve_kubeconfig" {
-  depends_on = [null_resource.init_kubernetes]
+# Retrieve kubeconfig
+resource "null_resource" "k8s_control_plane_kubeconfig" {
+  depends_on = [null_resource.k8s_control_plane_init]
   
   provisioner "local-exec" {
     command = "mkdir -p ${var.kubeconfig_path} && scp -i ${var.ssh_private_key_path} ${var.ssh_user}@${var.server_ip}:~/.kube/config ${var.kubeconfig_path}/config-debian"
   }
 }
 
-# Output connection instructions
-resource "null_resource" "output_connection_info" {
-  depends_on = [null_resource.retrieve_kubeconfig]
+# Output information for connecting to the cluster
+resource "null_resource" "k8s_control_plane_connection_info" {
+  depends_on = [null_resource.k8s_control_plane_kubeconfig]
   
   provisioner "local-exec" {
     command = "echo \"Kubernetes control plane successfully deployed on ${var.server_ip}. Use 'export KUBECONFIG=${var.kubeconfig_path}/config-debian' to connect.\""
   }
 }
 
-# Remove temporary sudo permissions after successful deployment
-resource "null_resource" "cleanup_temp_permissions" {
-  depends_on = [null_resource.output_connection_info]
+# Cleanup temporary permissions
+resource "null_resource" "k8s_control_plane_security_cleanup" {
+  depends_on = [null_resource.k8s_control_plane_connection_info]
   
   connection {
     type        = "ssh"

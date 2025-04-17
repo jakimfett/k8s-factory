@@ -11,6 +11,8 @@ Cargo.lock
 *.tfstate
 *.tfstate.*
 *.tfvars
+**.tfplan
+**.tfplan.*
 .terraformrc
 terraform.rc
 .terraform.lock.hcl
