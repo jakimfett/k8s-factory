@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+  prometheus:
+    build:
+      context: ./prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - echo-net
+    depends_on:
+      - aggregator
+
+  grafana:
+    build:
+      context: ./grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - echo-net
+    depends_on:
+      - prometheus
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+
+networks:
+  echo-net:
+    external: true

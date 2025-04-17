@@ -1,0 +1,34 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'aggregator'
+    static_configs:
+      - targets: ['aggregator:3000']
+    metrics_path: '/metrics'
+
+  # Basic health checks for echo servers
+  - job_name: 'echo-servers-health'
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        filters:
+          - name: name
+            values: ['echo-.*']
+    relabel_configs:
+      # Extract container name and use it as instance label
+      - source_labels: [__meta_docker_container_name]
+        regex: '/(.+)'
+        target_label: instance
+      # Set the target port for scraping
+      - source_labels: [__address__]
+        target_label: __address__
+        replacement: '$1:5678'
+    metrics_path: '/'
+    # Simple up/down monitoring - no actual metrics scraping
+    # Just checks if the server responds with HTTP 200
+    scrape_interval: 5s
