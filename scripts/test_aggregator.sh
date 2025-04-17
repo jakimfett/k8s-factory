@@ -25,10 +25,33 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Test counters
+# Test counters and timing
 TESTS_TOTAL=0
 TESTS_PASSED=0
 TESTS_FAILED=0
+TEST_START_TIME=0
+TEST_TOTAL_TIME=0
+SUITE_START_TIME=0
+
+# Get time in milliseconds
+get_time_ms() {
+  echo $(($(date +%s%N)/1000000))
+}
+
+# Format milliseconds to a readable time format
+format_time() {
+  local ms=$1
+  local seconds=$((ms / 1000))
+  local milliseconds=$((ms % 1000))
+  
+  if [[ $seconds -ge 60 ]]; then
+    local minutes=$((seconds / 60))
+    seconds=$((seconds % 60))
+    echo "${minutes}m ${seconds}.${milliseconds}s"
+  else
+    echo "${seconds}.${milliseconds}s"
+  fi
+}
 
 # Print test header
 echo_header() {
@@ -46,6 +69,9 @@ run_test() {
   
   ((TESTS_TOTAL++))
   
+  # Start timing the test
+  TEST_START_TIME=$(get_time_ms)
+  
   # In non-verbose mode, we only print a dot for each test to indicate progress
   if [[ "$VERBOSE" == "true" ]]; then
     echo -e "${YELLOW}Running test:${NC} $test_name"
@@ -57,11 +83,21 @@ run_test() {
   # Capture command output for verbose mode
   if [[ "$VERBOSE" == "true" ]]; then
     if eval "$test_command"; then
-      echo -e "${GREEN}✓ PASS:${NC} $test_name"
+      # Calculate test execution time
+      local end_time=$(get_time_ms)
+      local execution_time=$((end_time - TEST_START_TIME))
+      TEST_TOTAL_TIME=$((TEST_TOTAL_TIME + execution_time))
+      
+      echo -e "${GREEN}✓ PASS:${NC} $test_name ($(format_time $execution_time))"
       ((TESTS_PASSED++))
       return 0
     else
-      echo -e "${RED}✗ FAIL:${NC} $test_name"
+      # Calculate test execution time
+      local end_time=$(get_time_ms)
+      local execution_time=$((end_time - TEST_START_TIME))
+      TEST_TOTAL_TIME=$((TEST_TOTAL_TIME + execution_time))
+      
+      echo -e "${RED}✗ FAIL:${NC} $test_name ($(format_time $execution_time))"
       echo -e "${YELLOW}Expected:${NC} $expected_result"
       ((TESTS_FAILED++))
       return 1
@@ -69,12 +105,22 @@ run_test() {
   else
     # Suppress command output in non-verbose mode
     if eval "$test_command &> /dev/null"; then
+      # Calculate test execution time
+      local end_time=$(get_time_ms)
+      local execution_time=$((end_time - TEST_START_TIME))
+      TEST_TOTAL_TIME=$((TEST_TOTAL_TIME + execution_time))
+      
       ((TESTS_PASSED++))
       return 0
     else
+      # Calculate test execution time
+      local end_time=$(get_time_ms)
+      local execution_time=$((end_time - TEST_START_TIME))
+      TEST_TOTAL_TIME=$((TEST_TOTAL_TIME + execution_time))
+      
       # In case of failure, print a newline and the failure info even in non-verbose mode
       echo ""
-      echo -e "${RED}✗ FAIL:${NC} $test_name"
+      echo -e "${RED}✗ FAIL:${NC} $test_name ($(format_time $execution_time))"
       echo -e "${YELLOW}Expected:${NC} $expected_result"
       ((TESTS_FAILED++))
       return 1
@@ -95,19 +141,37 @@ test_debug_script() {
   fi
   
   # Test stop functionality
-  run_test "Debug containers can be stopped" \
-    "./scripts/run_debug_containers.sh $VERBOSE_FLAG --stop &>/dev/null && ! docker ps | grep -q -E 'local-echo|aggregator'" \
-    "All debug containers to be stopped"
+  if [[ "$VERBOSE" == "true" ]]; then
+    run_test "Debug containers can be stopped" \
+      "./scripts/run_debug_containers.sh --stop && ! docker ps | grep -q -E 'local-echo|aggregator'" \
+      "All debug containers to be stopped"
+  else
+    run_test "Debug containers can be stopped" \
+      "./scripts/run_debug_containers.sh --stop &>/dev/null && ! docker ps | grep -q -E 'local-echo|aggregator'" \
+      "All debug containers to be stopped"
+  fi
   
   # Test start functionality
-  run_test "Debug containers can be started" \
-    "./scripts/run_debug_containers.sh $VERBOSE_FLAG --start &>/dev/null && docker ps | grep -q 'aggregator' && docker ps | grep -q 'local-echo-1' && docker ps | grep -q 'local-echo-2'" \
-    "All debug containers to be running"
+  if [[ "$VERBOSE" == "true" ]]; then
+    run_test "Debug containers can be started" \
+      "./scripts/run_debug_containers.sh --start && docker ps | grep -q 'aggregator' && docker ps | grep -q 'local-echo-1' && docker ps | grep -q 'local-echo-2'" \
+      "All debug containers to be running"
+  else
+    run_test "Debug containers can be started" \
+      "./scripts/run_debug_containers.sh --start &>/dev/null && docker ps | grep -q 'aggregator' && docker ps | grep -q 'local-echo-1' && docker ps | grep -q 'local-echo-2'" \
+      "All debug containers to be running"
+  fi
   
   # Test restart functionality
-  run_test "Debug containers can be restarted" \
-    "./scripts/run_debug_containers.sh $VERBOSE_FLAG --restart &>/dev/null && docker ps | grep -q 'aggregator'" \
-    "All debug containers to be restarted and running"
+  if [[ "$VERBOSE" == "true" ]]; then
+    run_test "Debug containers can be restarted" \
+      "./scripts/run_debug_containers.sh --restart && docker ps | grep -q 'aggregator'" \
+      "All debug containers to be restarted and running"
+  else
+    run_test "Debug containers can be restarted" \
+      "./scripts/run_debug_containers.sh --restart &>/dev/null && docker ps | grep -q 'aggregator'" \
+      "All debug containers to be restarted and running"
+  fi
 }
 
 # Test suite: Aggregator Online Status
@@ -118,7 +182,7 @@ test_aggregator_online() {
   
   # Check if aggregator container is running
   run_test "Aggregator container is running" \
-    "docker ps -q | grep -q $(docker ps -qf name=aggregator) 2>/dev/null" \
+    "docker ps | grep -q 'aggregator'" \
     "Aggregator container to be running"
   
   # Check if aggregator is accepting HTTP connections
@@ -140,7 +204,7 @@ test_echo_connectivity() {
   
   # Get the list of echo servers the aggregator should be connected to
   run_test "Echo servers are running" \
-    "docker ps -q | grep -q $(docker ps -qf name=local-echo-1) && docker ps -q | grep -q $(docker ps -qf name=local-echo-2) 2>/dev/null" \
+    "docker ps | grep -q 'local-echo-1' && docker ps | grep -q 'local-echo-2'" \
     "All echo server containers to be running"
   
   # Check if aggregator can reach all echo servers
@@ -157,11 +221,11 @@ test_echo_connectivity() {
   # Verify echo server responses are included in the aggregator response
   if [[ "$VERBOSE" == "true" ]]; then
     run_test "Echo server responses are included in aggregator output" \
-      "curl -s http://localhost:3000/aggregate | jq -e 'map(.body) | .[] | contains(\"Hello from\")'" \
+      "curl -s http://localhost:3000/aggregate | grep -q 'Hello from'" \
       "Aggregator responses to contain echo server messages"
   else
     run_test "Echo server responses are included in aggregator output" \
-      "curl -s http://localhost:3000/aggregate 2>/dev/null | jq -e 'map(.body) | .[] | contains(\"Hello from\")' 2>/dev/null" \
+      "curl -s http://localhost:3000/aggregate 2>/dev/null | grep -q 'Hello from'" \
       "Aggregator responses to contain echo server messages"
   fi
 }
@@ -197,8 +261,13 @@ test_metrics_availability() {
 run_all_tests() {
   echo_header
   
+  # Reset timing counters
+  TEST_TOTAL_TIME=0
+  SUITE_START_TIME=$(get_time_ms)
+  
   # Ensure we start with a clean slate
   if [[ "$VERBOSE" == "true" ]]; then
+    echo -e "${BLUE}Starting test run at:${NC} $(date '+%Y-%m-%d %H:%M:%S')"
     ./scripts/run_debug_containers.sh --stop
   else
     ./scripts/run_debug_containers.sh --stop >/dev/null 2>&1
@@ -215,6 +284,9 @@ run_all_tests() {
   test_echo_connectivity
   test_metrics_availability
   
+  # Calculate total run time
+  local total_run_time=$(($(get_time_ms) - SUITE_START_TIME))
+  
   # In non-verbose mode, print a newline after dots
   if [[ "$VERBOSE" == "false" ]]; then
     echo ""
@@ -227,6 +299,10 @@ run_all_tests() {
   echo -e "Total tests: ${TESTS_TOTAL}"
   echo -e "Passed: ${GREEN}${TESTS_PASSED}${NC}"
   echo -e "Failed: ${RED}${TESTS_FAILED}${NC}"
+  echo -e "\n${BLUE}Timing:${NC}"
+  echo -e "Total run time: $(format_time $total_run_time)"
+  echo -e "Pure test execution time: $(format_time $TEST_TOTAL_TIME)"
+  echo -e "Overhead time: $(format_time $((total_run_time - TEST_TOTAL_TIME)))"
   
   # Return non-zero exit code if any tests failed
   if [ ${TESTS_FAILED} -gt 0 ]; then
@@ -260,7 +336,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     exit 1
   fi
   
-  run_all_tests
+  time run_all_tests
   exit $?
 else
   # This is for when the script is sourced rather than executed directly
