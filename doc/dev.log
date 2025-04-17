@@ -54,15 +54,17 @@ The Rust aggregator service currently uses a multi-stage Dockerfile with depende
 ## Prometheus Integration
 The aggregator service has been instrumented with Prometheus metrics using the following Rust crates:
 
-- `prometheus` (v0.13): Core metrics library
-- `prometheusx` (v0.2): Axum integration for Prometheus
-- `lazy_static` (v1.4): For global metrics registry
+- `prometheus` (v0.13): Core metrics library for collecting and exposing metrics
+- `lazy_static` (v1.4): For global metrics registry initialization
+
+Originally, we explored using `prometheusx` for Axum integration, but ultimately simplified the implementation by implementing the metrics endpoint directly with just the base prometheus crate.
 
 The metrics implementation follows these patterns:
 
 1. **Global Metrics Registry**: Using `lazy_static` to create global metrics that can be accessed from any handler
 2. **Counter and Histogram Metrics**: Tracking both request counts and response time distributions
 3. **Labeled Metrics**: Using labels to differentiate between endpoints and echo servers
+4. **Custom Axum Handler**: Implementing a `/metrics` endpoint that gathers metrics and encodes them in Prometheus exposition format
 
 ## Service Discovery Considerations
 
@@ -85,6 +87,38 @@ We evaluated several approaches for monitoring echo servers:
 
 The selected approach aligns with the project's design principles of simplicity and separation of concerns.
 
+# Aggregator Service Architecture
+
+## Key Components and Their Roles
+
+### 1. Metrics System
+- **Prometheus Integration**: Uses native Prometheus crates without a separate metrics service
+- **Key Metrics**:
+  - Request counters by endpoint (index, aggregate, metrics)
+  - Response time histograms from echo servers with detailed bucket ranges (5-1000ms)
+- **Implementation**: Uses lazy_static for one-time initialization of metrics objects
+
+### 2. Application State
+- **Thread-safe URL Storage**: Maintains echo server URLs in an Arc<Vec<String>>
+- **Simple Design**: Focused on essential data with clear separation of concerns
+- **Environment Configuration**: Reads server URLs from the ECHO_URLS environment variable
+
+### 3. Request Handlers
+- **Root Endpoint** (`/`): HTML dashboard with JavaScript for dynamic response loading
+- **Aggregate Endpoint** (`/aggregate`): Core functionality that asynchronously queries all echo servers
+- **Metrics Endpoint** (`/metrics`): Prometheus-compatible metrics endpoint using standard text format
+
+### 4. Asynchronous Processing
+- **Parallel Requests**: Spawns separate tasks for each echo server
+- **Performance Tracking**: Measures and records response times for each server
+- **Error Handling**: Gracefully handles connection and response failures
+
+## Development and Deployment Challenges
+
+- **Local vs. Containerized**: Works correctly when run locally, but container lifecycle issues exist
+- **Docker Signal Handling**: Container exits immediately despite correct code execution
+- **Environment Requirements**: Requires ECHO_URLS to be properly set in all environments
+
 ## Why Builds Still Take Time
 
 - **Partial Cache Invalidation**: When source code changes, steps after the dependency caching are invalidated
@@ -103,3 +137,43 @@ The selected approach aligns with the project's design principles of simplicity 
    ```
 3. **Cargo Workspaces**: Organize the project as a Cargo workspace as more Rust services are added
 4. **sccache Integration**: For very large projects, consider using `sccache` for persistent compilation caching
+
+## Container Lifecycle Considerations
+
+1. **Process Management**: Consider using a process manager inside the container
+2. **Signal Handling**: Improve how the Rust application handles Docker signals
+3. **Health Checks**: Implement proper health checks for better container orchestration
+4. **Restart Policies**: Current workaround uses 'restart=always' in Terraform configuration
+
+## Docker Container Debugging
+
+Troubleshooting the aggregator service in Docker containers has been challenging. Here's a summary of approaches attempted:
+
+### Dockerfile Modifications
+- Switched from direct binary execution to a wrapper script approach
+- Added extensive debugging output during container startup
+- Tried various CMD formats: direct binary execution, bash shells, shell scripts
+- Ensured proper permissions and paths for executed binaries
+
+### Container Configuration
+- Implemented `restart=always` policy in Terraform to handle exit issues
+- Added `stdin_open=true` and `tty=true` to keep container process alive
+- Verified container logs show correct startup sequence
+- Tried different container lifecycle hooks
+
+### Environment Variables
+- Confirmed ECHO_URLS is properly passed and parsed
+- Added explicit error handling for missing environment variables
+- Verified environment variable visibility within container context
+
+### Networking Setup
+- Configured DNS for container-to-container communication
+- Mapped internal and external ports correctly
+- Verified network connectivity between containers
+
+### Runtime Behavior
+- Added delays during startup to ensure all services initialize properly
+- Enhanced logging to show each step of the startup process
+- The container runs correctly but exits immediately despite proper binding
+
+Currently, the service works perfectly when run locally but has container lifecycle issues in Docker. The temporary solution is using Terraform's restart policy while we continue investigating better approaches for the Kubernetes migration.
