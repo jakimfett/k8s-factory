@@ -1,4 +1,6 @@
-# Kubernetes Windsurf
+# Building a Hammer Factory
+
+ref: @todo find hammer factory story link
 
 ## Project Goal
 To provide a hands-on, infrastructure-as-code learning environment for Kubernetes using Docker containers and Terraform. The project emphasizes experimentation, stress testing, and reproducibility across different workstations.

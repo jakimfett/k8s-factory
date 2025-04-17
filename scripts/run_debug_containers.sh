@@ -73,7 +73,6 @@ start_containers() {
   echo "curl http://localhost:3000/metrics"
 }
 
-# Restart all containers
 # Display status of debug containers
 show_status() {
   echo "=== Debug Container Status ==="
@@ -142,6 +141,9 @@ case "$1" in
     show_help
     show_status
     ;;
+  --status)
+    show_status
+    ;;  
   *)
     echo_banner
     echo "Invalid option: $1"
