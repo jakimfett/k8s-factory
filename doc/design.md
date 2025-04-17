@@ -258,6 +258,65 @@ The test-driven approach facilitates the future migration to Kubernetes by estab
 
 ---
 
+# Container Lifecycle Management and Error Handling
+
+## Overview
+A robust container lifecycle management strategy is implemented to ensure reliable operation in both development and production environments. The approach prioritizes fault detection, detailed error reporting, and graceful failure modes over silent failures or endless restart loops.
+
+## Design Principles
+
+1. **Fail Fast, Fail Loudly**
+   - Containers detect and report issues quickly with clear error messages
+   - Critical failures trigger immediate exit with detailed diagnostic information
+   - All error states are accompanied by descriptive logs and emoji-highlighted warnings
+
+2. **Resource Conflict Detection**
+   - Containers explicitly check for port binding conflicts at startup
+   - Network resource availability is verified before service initialization
+   - DNS resolution and service discovery issues are proactively identified
+
+3. **Self-Healing with Limits**
+   - Services implement retry logic with exponential backoff for transient issues
+   - Restart loops are detected and limited to prevent resource exhaustion
+   - Container health is monitored via HTTP health checks and process monitoring
+
+4. **Dependency Validation**
+   - Required environment variables are validated at startup
+   - Upstream service availability is verified before initialization
+   - Explicit network connectivity tests ensure proper communication paths
+
+## Implementation Details
+
+### Startup Script Architecture
+Each container includes a comprehensive startup wrapper script that performs important checks before launching the primary service:
+
+1. **Network Environment Analysis**
+   - IP configuration inspection
+   - Open port verification
+   - DNS resolution testing
+
+2. **Port Conflict Detection**
+   - Verification of required ports availability
+   - Detailed error reporting for port conflicts
+   - Network socket binding validation
+
+3. **Dependency Connectivity Testing**
+   - Echo server availability verification
+   - Configurable retry attempts and backoff strategy
+   - Graceful degradation when dependencies are unavailable
+
+4. **Restart Loop Prevention**
+   - Counter-based restart detection
+   - Maximum restart thresholds
+   - Extended diagnostic sleep periods for troubleshooting
+
+### Health Check Implementation
+- Dedicated `/health` HTTP endpoint in each service
+- Process-level monitoring as fallback
+- Docker HEALTHCHECK instructions with appropriate timing parameters
+
+---
+
 # Infrastructure Testing Strategy
 
 ## Overview

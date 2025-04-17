@@ -178,12 +178,22 @@ async fn main() {
         echo_urls: Arc::new(urls), // Wrap in Arc for thread-safe reference counting
     };
     
+    // Handler for /health endpoint - used by Docker/Kubernetes health checks
+    async fn health() -> impl IntoResponse {
+        // Increment request counter with 'health' endpoint label
+        REQUEST_COUNTER.with_label_values(&["health"]).inc();
+        
+        // Simple health check response with 200 OK status
+        axum::http::StatusCode::OK
+    }
+    
     // Create the Axum router with all routes and shared state
     let app = Router::new()
-        .route("/", get(index))           // Route for HTML dashboard
-        .route("/aggregate", get(aggregate)) // Route for JSON API
-        .route("/metrics", get(metrics))     // Route for Prometheus metrics
-        .with_state(state);                   // Attach shared state
+        .route("/", get(index))              // Route for HTML dashboard
+        .route("/aggregate", get(aggregate))    // Route for JSON API
+        .route("/metrics", get(metrics))        // Route for Prometheus metrics
+        .route("/health", get(health))          // Route for health checks
+        .with_state(state);                      // Attach shared state
     
     // Configure server to listen on all interfaces, port 3000
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));

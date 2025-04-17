@@ -94,7 +94,7 @@ The selected approach aligns with the project's design principles of simplicity 
 ### 1. Metrics System
 - **Prometheus Integration**: Uses native Prometheus crates without a separate metrics service
 - **Key Metrics**:
-  - Request counters by endpoint (index, aggregate, metrics)
+  - Request counters by endpoint (index, aggregate, metrics, health)
   - Response time histograms from echo servers with detailed bucket ranges (5-1000ms)
 - **Implementation**: Uses lazy_static for one-time initialization of metrics objects
 
@@ -176,7 +176,21 @@ Troubleshooting the aggregator service in Docker containers has been challenging
 - Enhanced logging to show each step of the startup process
 - The container runs correctly but exits immediately despite proper binding
 
-Currently, the service works perfectly when run locally but has container lifecycle issues in Docker. The temporary solution is using Terraform's restart policy while we continue investigating better approaches for the Kubernetes migration.
+~~Currently, the service works perfectly when run locally but has container lifecycle issues in Docker. The temporary solution is using Terraform's restart policy while we continue investigating better approaches for the Kubernetes migration.~~
+
+**Update (2025-04-17)**: Container lifecycle issues have been resolved with a comprehensive startup script and improved error handling. The solution includes:
+
+1. **Port Conflict Detection**: Improved detection and reporting of port binding conflicts during container initialization
+2. **Restart Loop Prevention**: Counter-based restart detection with maximum thresholds to prevent endless restart loops
+3. **Network Connectivity Validation**: Enhanced echo server connectivity testing with DNS resolution troubleshooting
+4. **Health Check Implementation**: Added a dedicated `/health` endpoint for more accurate container health monitoring
+5. **Terraform Configuration Improvements**: Updated container networking with explicit hostnames, aliases, and health checks
+6. **Startup Delay Management**: Configurable startup delays to ensure proper network initialization and DNS resolution
+7. **Dependency Validation**: Improved validation of environment variables and required dependencies
+
+The containers now provide clear, detailed error messages when failures occur, instead of silently restarting or failing. This should make debugging and troubleshooting much easier in production environments. All the improvements have been implemented with an eye toward the future Kubernetes migration, using patterns that work well in both Docker and Kubernetes.
+
+Test cases have been expanded to include port conflict detection tests, showing that our containers detect and report port conflicts correctly instead of entering restart loops.
 
 # Terraform Testing Options - 2025-04-16
 

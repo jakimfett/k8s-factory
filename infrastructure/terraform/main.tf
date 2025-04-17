@@ -38,9 +38,28 @@ resource "docker_container" "http_echo" {
   command = [
     "-text=Hello from echo-${count.index + 1}!"
   ]
+  
+  # Ensure the container starts quickly
+  restart = "no"
+  
+  # Add explicit hostname for better DNS resolution
+  hostname = "echo-${count.index + 1}"
+  
+  # Add network alias to ensure the hostname resolves correctly
   networks_advanced {
     name = docker_network.echo_net.name
+    aliases = ["echo-${count.index + 1}"]
   }
+  
+  # Add health check to ensure the echo server is ready
+  healthcheck {
+    test         = ["CMD", "curl", "-f", "http://localhost:5678"]
+    interval     = "2s"
+    timeout      = "1s"
+    start_period = "3s"
+    retries      = 3
+  }
+  
   ports {
     internal = 5678
     external = 8081 + count.index
@@ -48,21 +67,41 @@ resource "docker_container" "http_echo" {
 }
 
 resource "docker_container" "aggregator" {
-  name  = "aggregator"
-  image = docker_image.aggregator.name
-  env   = ["ECHO_URLS=${local.echo_urls_csv}"]
+  name     = "aggregator"
+  image    = docker_image.aggregator.name
+  hostname = "aggregator"
+  env      = [
+    "ECHO_URLS=${local.echo_urls_csv}",
+    "MAX_RETRIES=10",                    # Increase retry count for echo server connections
+    "RETRY_DELAY=5",                    # Longer delay between retries
+    "STARTUP_DELAY=5"                   # Add delay before connecting to echo servers
+  ]
   
-  # Keep container running
-  restart = "always"
-  stdin_open = true
-  tty = true
+  # Allow for proper restart loop detection within the container
+  # while still giving it a chance to recover from temporary issues
+  restart     = "on-failure"
+  stdin_open  = true
+  tty         = true
   
   networks_advanced {
-    name = docker_network.echo_net.name
+    name    = docker_network.echo_net.name
+    aliases = ["aggregator"]  # Explicit network alias
   }
+  
+  # Health check to monitor the aggregator container
+  healthcheck {
+    test         = ["CMD", "curl", "-f", "http://localhost:3000/health"]
+    interval     = "10s"
+    timeout      = "5s"
+    start_period = "15s"
+    retries      = 3
+  }
+  
   ports {
     internal = 3000
     external = 3000
   }
+  
+  # Wait for echo servers to be healthy before starting aggregator
   depends_on = [docker_container.http_echo]
 }
