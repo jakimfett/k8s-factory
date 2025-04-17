@@ -1,10 +1,29 @@
 use axum::{extract::State, response::{Html, IntoResponse}, routing::get, Json, Router};
+use prometheus::{Encoder, TextEncoder, register_counter_vec, register_histogram_vec, CounterVec, HistogramVec};
 use serde::Serialize;
 use std::{env, net::SocketAddr, sync::Arc, time::Instant};
 
+// Initialize metrics
+lazy_static::lazy_static! {
+    static ref REQUEST_COUNTER: CounterVec = register_counter_vec!(
+        "aggregator_requests_total",
+        "Total number of requests processed by the aggregator",
+        &["endpoint"]
+    ).unwrap();
+    
+    static ref RESPONSE_TIME_HISTOGRAM: HistogramVec = register_histogram_vec!(
+        "aggregator_response_time_ms",
+        "Response time in milliseconds",
+        &["echo_server"],
+        vec![5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0]
+    ).unwrap();
+}
+
+// Define application state
 #[derive(Clone)]
 struct AppState {
     echo_urls: Arc<Vec<String>>,
+
 }
 
 #[derive(Serialize)]
@@ -15,6 +34,9 @@ struct EchoResponse {
 }
 
 async fn aggregate(State(state): State<AppState>) -> impl IntoResponse {
+    // Increment real counter for aggregate endpoint
+    REQUEST_COUNTER.with_label_values(&["aggregate"]).inc();
+    
     let mut handles = vec![];
     for url in state.echo_urls.iter() {
         let url = url.clone();
@@ -24,10 +46,18 @@ async fn aggregate(State(state): State<AppState>) -> impl IntoResponse {
                 Ok(resp) => resp.text().await.unwrap_or_else(|_| "[error reading body]".to_string()),
                 Err(_) => "[error connecting]".to_string(),
             };
+            let elapsed_ms = start.elapsed().as_millis() as f64;
+            
+            // Extract the server name from the URL for better labeling
+            let server_name = url.split("://").nth(1).unwrap_or(&url).split(":").next().unwrap_or("unknown");
+            
+            // Record response time in histogram
+            RESPONSE_TIME_HISTOGRAM.with_label_values(&[server_name]).observe(elapsed_ms);
+            
             EchoResponse {
                 url,
                 body,
-                ms: start.elapsed().as_millis(),
+                ms: elapsed_ms as u128,
             }
         }));
     }
@@ -38,30 +68,45 @@ async fn aggregate(State(state): State<AppState>) -> impl IntoResponse {
     Json(results)
 }
 
-async fn index() -> impl IntoResponse {
-    Html(r#"
+async fn metrics() -> impl IntoResponse {
+    // Gather metrics using the prometheus crate's built-in gather function
+    let encoder = TextEncoder::new();
+    let metric_families = prometheus::gather();
+    let mut buffer = Vec::new();
+    encoder.encode(&metric_families, &mut buffer).unwrap();
+    
+    // Return the metrics in Prometheus exposition format
+    ([ (axum::http::header::CONTENT_TYPE.as_str(), "text/plain; version=0.0.4") ], buffer)
+}
+
+async fn index(State(state): State<AppState>) -> impl IntoResponse {
+    // Increment real counter for index endpoint
+    REQUEST_COUNTER.with_label_values(&["index"]).inc();
+    
+    Html(format!(r#"
     <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
         <title>Echo Aggregator</title>
-        <style>body { font-family: sans-serif; }</style>
+        <style>body {{ font-family: sans-serif; }}</style>
     </head>
     <body>
         <h1>Echo Aggregator</h1>
+        <p>Echo URLs: {:?}</p>
         <div id="responses">Loading...</div>
         <script>
-        fetch('/aggregate').then(r => r.json()).then(data => {
+        fetch('/aggregate').then(r => r.json()).then(data => {{
             let html = '';
-            data.forEach(item => {
-                html += `<div><b>${item.url}</b> (${item.ms} ms):<br><pre>${item.body}</pre></div><hr/>`;
-            });
+            data.forEach(item => {{
+                html += `<div><b>${{item.url}}</b> (${{item.ms}} ms):<br><pre>${{item.body}}</pre></div><hr/>`;
+            }});
             document.getElementById('responses').innerHTML = html;
-        });
+        }});
         </script>
     </body>
     </html>
-    "#)
+    "#, state.echo_urls))
 }
 
 #[tokio::main]
@@ -93,10 +138,14 @@ async fn main() {
     println!("[aggregator] Waiting for 2 seconds before starting server...");
     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
     
-    let state = AppState { echo_urls: Arc::new(urls) };
+    let state = AppState { 
+        echo_urls: Arc::new(urls),
+    };
+    
     let app = Router::new()
         .route("/", get(index))
         .route("/aggregate", get(aggregate))
+        .route("/metrics", get(metrics))
         .with_state(state);
     
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
