@@ -166,4 +166,8 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   
   run_all_tests
   exit $?
+else
+  # This is for when the script is sourced rather than executed directly
+  echo "@todo: display list of available tests"
+  echo "@todo: add section in README.md for testing instructions"
 fi
