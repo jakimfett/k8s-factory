@@ -16,7 +16,7 @@ To provide a hands-on, infrastructure-as-code learning environment for Kubernete
 
 2. **Deploy the Echo Server Swarm:**
    ```sh
-   cd infrastructure
+   cd infrastructure/terraform
    terraform init
    terraform apply
    ```
