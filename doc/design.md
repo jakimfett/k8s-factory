@@ -152,10 +152,10 @@ The metrics service provides comprehensive monitoring capabilities for the Kuber
 ## Implementation Details
 
 ### Aggregator Metrics
-The aggregator service is instrumented with Prometheus metrics using the `prometheus` and `prometheusx` Rust crates. It exposes:
+The aggregator service is instrumented with Prometheus metrics using the `prometheus` and `lazy_static` Rust crates. It exposes:
 
 - Request counters by endpoint (`aggregator_requests_total`)
-- Response time histograms by echo server (`aggregator_response_time_ms`)
+- Response time histograms by echo server (`aggregator_response_time_ms`) with buckets from 5ms to 1000ms
 
 ### Service Discovery
 Prometheus uses Docker socket access to automatically discover and monitor echo servers:
@@ -172,3 +172,77 @@ This approach allows for dynamic scaling of echo servers without configuration c
 
 ### Visualization
 Grafana provides pre-configured dashboards for visualizing the collected metrics. It is conditionally deployed based on the `enable_visualization` Terraform variable, allowing for a lightweight deployment when visualization is not needed.
+
+---
+
+# Test-Driven Development Infrastructure
+
+## Overview
+The project follows a test-driven development (TDD) approach with comprehensive test scripts to validate functionality across multiple layers of the application. This ensures reliability, maintainability, and facilitates the future migration to Kubernetes.
+
+## Design Principles
+
+1. **Automation First**
+   - All tests are fully automated via shell scripts
+   - Designed for CI/CD pipeline integration
+   - Consistent output format with clear pass/fail indicators
+
+2. **Comprehensive Coverage**
+   - Tests span from container management to service functionality
+   - Validates both basic connectivity and advanced features
+   - Ensures all critical paths are covered
+
+3. **Environment Verification**
+   - Tests include environment setup validation
+   - Verifies container lifecycle management
+   - Confirms required dependencies and network connectivity
+
+4. **Metrics Validation**
+   - Dedicated tests for metrics endpoint availability
+   - Validates metric types and Prometheus compatibility
+   - Ensures metrics are consistently available across environments
+
+## Implementation Details
+
+### Test Script Architecture
+The primary test script (`test_aggregator.sh`) is organized into logical test suites:
+
+1. **Debug Script Functionality Tests**
+   - Validates container start/stop/restart capabilities
+   - Ensures clean environment setup and teardown
+
+2. **Aggregator Online Status Tests**
+   - Verifies aggregator container health
+   - Confirms HTTP endpoint availability
+   - Checks container health status
+
+3. **Echo Server Connectivity Tests**
+   - Validates all echo servers are running
+   - Confirms aggregator connects to 100% of echo servers
+   - Verifies response content from echo servers
+
+4. **Metrics Availability Tests**
+   - Confirms metrics endpoint accessibility
+   - Validates presence of required metrics
+   - Verifies metrics follow Prometheus format
+
+### Dependencies
+The test infrastructure relies on specific tools to enable robust testing:
+
+- **jq**: JSON processor for structured testing of API responses
+  - Enables type-aware validation of aggregator responses
+  - Provides reliable array operations for checking echo server connectivity
+  - Allows for JSON path expressions to validate response content
+  
+- **curl**: For HTTP endpoint testing
+- **docker**: For container management and inspection
+
+### Integration with Development Workflow
+Test scripts are designed to be run at multiple stages of development:
+
+1. **Local Development**: During active development to verify changes
+2. **Pre-commit Testing**: Before committing code to ensure quality
+3. **CI/CD Pipeline**: As part of automated testing in CI/CD
+4. **Deployment Validation**: After deployment to verify environment setup
+
+The test-driven approach facilitates the future migration to Kubernetes by establishing clear expectations for service behavior and providing a foundation for Kubernetes-specific tests.

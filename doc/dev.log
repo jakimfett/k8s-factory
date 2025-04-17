@@ -177,3 +177,56 @@ Troubleshooting the aggregator service in Docker containers has been challenging
 - The container runs correctly but exits immediately despite proper binding
 
 Currently, the service works perfectly when run locally but has container lifecycle issues in Docker. The temporary solution is using Terraform's restart policy while we continue investigating better approaches for the Kubernetes migration.
+
+# Test-Driven Development Implementation - 2025-04-16
+
+Today we implemented a comprehensive test-driven development infrastructure for the Kubernetes Windsurf project, focusing on the aggregator service and metrics functionality. This represents a significant step toward ensuring reliability and reproducibility as we prepare for Kubernetes migration.
+
+## Key Achievements
+
+1. **Test Script Creation**
+   - Created `test_aggregator.sh` with modular test suites
+   - Implemented colorized output for clear test results
+   - Designed with CI/CD pipeline integration in mind
+
+2. **Test Coverage Areas**
+   - Debug script functionality (start/stop/restart containers)
+   - Aggregator service health and connectivity
+   - Echo server communication verification
+   - Metrics endpoint validation
+
+3. **Metrics Validation**
+   - Verified Prometheus metrics format compliance
+   - Confirmed request counters are functioning
+   - Validated response time histograms are recording data
+   - Ensured metrics endpoint is consistently available
+
+4. **Container Lifecycle Testing**
+   - Confirmed container startup processes
+   - Validated health check functionality
+   - Verified proper connection between services
+
+5. **Documentation Updates**
+   - Added test infrastructure details to design documentation
+   - Updated README with dependency information
+   - Documented test-driven approach for future reference
+
+## Next Steps
+
+- Expand test coverage to include more edge cases
+- Create Kubernetes-specific test suite in preparation for migration
+- Implement automated test running as part of development workflow
+- Consider integration with GitHub Actions or similar CI/CD platform
+
+The test infrastructure provides a solid foundation for maintaining quality as we progress toward Kubernetes deployment. All tests are currently passing, confirming that our metrics implementation and container management are working as expected.
+
+# Dependencies
+### jq for Testing
+The project uses `jq` for test automation, which provides several advantages over built-in shell commands:
+
+- **Structured JSON Parsing**: While the aggregator returns JSON responses, parsing them with standard shell tools like grep, sed, or awk would be error-prone and complex, especially for nested structures.
+- **Array Operations**: Tests check if the aggregator connects to all echo servers by verifying the length of the returned array with `jq -e 'length == 2'`. This is difficult to do reliably with standard shell commands.
+- **JSON Path Expressions**: Tests use expressions like `jq -e 'map(.body) | .[] | contains("Hello from")'` to extract and check content from each response. This would require multiple complex commands with standard tools.
+- **Type-aware Processing**: jq understands JSON data types (strings, numbers, arrays, objects) and handles them appropriately, while standard text processing tools treat everything as strings.
+
+This approach results in less brittle testing and more maintainable test scripts.
