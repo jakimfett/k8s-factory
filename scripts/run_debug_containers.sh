@@ -74,6 +74,46 @@ start_containers() {
 }
 
 # Restart all containers
+# Display status of debug containers
+show_status() {
+  echo "=== Debug Container Status ==="
+  
+  # Check if containers exist
+  echo -n "Echo Server 1: "
+  if docker ps -a --format '{{.Names}}' | grep -q "^local-echo-1$"; then
+    status=$(docker inspect -f '{{.State.Status}}' local-echo-1)
+    echo "$status (Port 5001)"
+  else
+    echo "Not created"
+  fi
+  
+  echo -n "Echo Server 2: "
+  if docker ps -a --format '{{.Names}}' | grep -q "^local-echo-2$"; then
+    status=$(docker inspect -f '{{.State.Status}}' local-echo-2)
+    echo "$status (Port 5002)"
+  else
+    echo "Not created"
+  fi
+  
+  echo -n "Aggregator: "
+  if docker ps -a --format '{{.Names}}' | grep -q "^aggregator$"; then
+    status=$(docker inspect -f '{{.State.Status}}' aggregator)
+    echo "$status (Port 3000)"
+    
+    # If running, show health status
+    if [ "$status" = "running" ]; then
+      health=$(docker inspect -f '{{.State.Health.Status}}' aggregator 2>/dev/null || echo "N/A")
+      if [ "$health" != "N/A" ]; then
+        echo "Health Status: $health"
+      fi
+    fi
+  else
+    echo "Not created"
+  fi
+  echo
+}
+
+# Restart all containers
 restart_containers() {
   stop_containers
   start_containers
@@ -100,11 +140,13 @@ case "$1" in
     ;;
   -h | --help)
     show_help
+    show_status
     ;;
   *)
     echo_banner
     echo "Invalid option: $1"
     show_help
+    show_status
     exit 1
     ;;
 esac
