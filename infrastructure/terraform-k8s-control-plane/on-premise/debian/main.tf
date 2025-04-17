@@ -30,10 +30,6 @@ resource "null_resource" "install_containerd" {
 
   provisioner "remote-exec" {
     inline = [
-      # Install prerequisites
-      "sudo apt-get update",
-      "sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release",
-      
       # Install containerd
       "sudo apt-get install -y containerd.io",
       
@@ -105,31 +101,34 @@ resource "null_resource" "init_kubernetes" {
     host        = var.server_ip
   }
 
+  # Render the kubeadm config template
+  provisioner "local-exec" {
+    command = "envsubst < kubeadm-config.yaml.tpl > kubeadm-config.yaml"
+    environment = {
+      kubernetes_version = var.kubernetes_version
+      pod_cidr = var.pod_cidr
+      service_cidr = var.service_cidr
+      server_ip = var.server_ip
+    }
+    working_dir = "/Users/jakimfett/hub/dev/kubernetes-windsurf/infrastructure/terraform-k8s-control-plane/on-premise/debian"
+  }
+
+  # Upload the kubeadm config file
+  provisioner "file" {
+    source      = "/Users/jakimfett/hub/dev/kubernetes-windsurf/infrastructure/terraform-k8s-control-plane/on-premise/debian/kubeadm-config.yaml"
+    destination = "/tmp/kubeadm-config.yaml"
+  }
+
   provisioner "remote-exec" {
     inline = [
-      # Create kubeadm configuration file with containerd settings
-      "cat <<EOF | sudo tee /tmp/kubeadm-config.yaml
-apiVersion: kubeadm.k8s.io/v1beta3
-kind: InitConfiguration
-nodeRegistration:
-  criSocket: unix:///run/containerd/containerd.sock
----
-apiVersion: kubeadm.k8s.io/v1beta3
-kind: ClusterConfiguration
-kubernetesVersion: v${var.kubernetes_version}
-networking:
-  podSubnet: ${var.pod_cidr}
-  serviceSubnet: ${var.service_cidr}
-controlPlaneEndpoint: ${var.server_ip}:6443
-EOF",
 
       # Initialize control plane with the configuration file
       "sudo kubeadm init --config=/tmp/kubeadm-config.yaml --upload-certs",
       
-      # Configure kubectl for the user
-      "mkdir -p $HOME/.kube",
-      "sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config",
-      "sudo chown $(id -u):$(id -g) $HOME/.kube/config",
+      # Configure kubectl for the user (note: .kube directory was pre-created in setup_k8s_admin.sh)
+      "sudo cp -i /etc/kubernetes/admin.conf /home/${var.ssh_user}/.kube/config",
+      "sudo chown ${var.ssh_user}:${var.ssh_user} /home/${var.ssh_user}/.kube/config",
+      "cp -i /etc/kubernetes/admin.conf $HOME/.kube/config",
       
       # Install Calico network plugin
       "kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml",

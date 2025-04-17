@@ -34,19 +34,27 @@ fi
 echo -e "${GREEN}Setting up restricted sudo privileges for $K8S_USER...${NC}"
 cat << EOF > /etc/sudoers.d/$K8S_USER
 # Kubernetes-specific commands that don't require password
-Cmnd_Alias K8S_COMMANDS = /usr/bin/kubeadm, /usr/bin/kubelet, /usr/bin/kubectl
-Cmnd_Alias K8S_SERVICES = /bin/systemctl start kubelet, /bin/systemctl stop kubelet, /bin/systemctl restart kubelet, /bin/systemctl status kubelet, /bin/systemctl enable kubelet
-Cmnd_Alias CONTAINER_SERVICES = /bin/systemctl start containerd, /bin/systemctl stop containerd, /bin/systemctl restart containerd, /bin/systemctl status containerd, /bin/systemctl enable containerd
-Cmnd_Alias K8S_NETWORK = /sbin/ip, /usr/sbin/sysctl -w net.bridge.bridge-nf-call-iptables=1, /usr/sbin/sysctl -w net.ipv4.ip_forward=1, /usr/sbin/sysctl -w net.bridge.bridge-nf-call-ip6tables=1, /usr/sbin/sysctl --system
-Cmnd_Alias K8S_FILES = /bin/mkdir -p /etc/containerd, /bin/cp -i /etc/kubernetes/admin.conf /home/$K8S_USER/.kube/config, /bin/chown $K8S_USER:$K8S_USER /home/$K8S_USER/.kube/config
+$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/kubeadm, /usr/bin/kubelet, /usr/bin/kubectl
 
-# Allow passwordless execution for Kubernetes operations
-$K8S_USER ALL=(ALL) NOPASSWD: K8S_COMMANDS, K8S_SERVICES, CONTAINER_SERVICES, K8S_NETWORK, K8S_FILES
+# Service management
+$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl start kubelet, /usr/bin/systemctl stop kubelet, /usr/bin/systemctl restart kubelet, /usr/bin/systemctl status kubelet, /usr/bin/systemctl enable kubelet
+$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl start containerd, /usr/bin/systemctl stop containerd, /usr/bin/systemctl restart containerd, /usr/bin/systemctl status containerd, /usr/bin/systemctl enable containerd
+
+# Network configuration
+$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/ip, /usr/sbin/sysctl -w net.bridge.bridge-nf-call-iptables=1, /usr/sbin/sysctl -w net.ipv4.ip_forward=1, /usr/sbin/sysctl -w net.bridge.bridge-nf-call-ip6tables=1, /usr/sbin/sysctl --system
+
+# Required directory operations
+$K8S_USER ALL=(ALL) NOPASSWD: /bin/mkdir -p /etc/containerd
 
 # Require password for package management and general system operations
-$K8S_USER ALL=(ALL) /usr/bin/apt,/usr/bin/apt-get, /usr/bin/apt-key, /usr/bin/apt-mark, /bin/systemctl, /usr/bin/tee
+$K8S_USER ALL=(ALL) /usr/bin/apt, /usr/bin/apt-get, /usr/bin/apt-key, /usr/bin/apt-mark, /usr/bin/systemctl, /usr/bin/tee
 EOF
 chmod 440 /etc/sudoers.d/$K8S_USER
+
+# Pre-create .kube directory for user
+echo -e "${GREEN}Creating Kubernetes config directory for $K8S_USER...${NC}"
+mkdir -p /home/$K8S_USER/.kube
+chown $K8S_USER:$K8S_USER /home/$K8S_USER/.kube
 
 # Create SSH directory and add authorized key
 echo -e "${GREEN}Setting up SSH for $K8S_USER...${NC}"

@@ -21,12 +21,44 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+# Add Docker repository (for containerd installation)
+echo -e "${YELLOW}Setting up Docker repository for containerd installation...${NC}"
+
+# Install prerequisites
+apt-get update
+apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+
+# Add Docker repository (which provides containerd.io)
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+chmod a+r /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo $VERSION_CODENAME) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Add Kubernetes repository (for Debian)
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+chmod a+r /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /" | tee /etc/apt/sources.list.d/kubernetes.list > /dev/null
+
+# Update package lists
+apt-get update
+
 # Add temporary passwordless privileges for package installation during setup
 echo -e "${YELLOW}Adding temporary permissions for initial setup...${NC}"
 cat << EOF > /etc/sudoers.d/terraform_temp
 # Temporary permissions for initial Terraform setup
-$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/apt-get update, /usr/bin/apt-get install -y *, /usr/bin/apt-key add -, /usr/bin/apt-mark hold *
-$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/apt/sources.list.d/*, /usr/bin/tee /etc/modules-load.d/*, /usr/bin/tee /etc/sysctl.d/*, /usr/bin/tee /etc/containerd/config.toml, /usr/bin/tee /tmp/kubeadm-config.yaml
+# Allow specific sudo commands for Kubernetes setup
+$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/apt-get update
+$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/apt-get install -y *
+$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/apt-mark hold *
+$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/containerd config default
+$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/tee *
+$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/sed -i *
+$K8S_USER ALL=(ALL) NOPASSWD: /usr/sbin/modprobe *
+$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart containerd
+$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl enable containerd
+$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/swapoff -a
+$K8S_USER ALL=(ALL) NOPASSWD: /usr/bin/kubeadm init *
 $K8S_USER ALL=(ALL) NOPASSWD: /bin/rm -f /etc/sudoers.d/terraform_temp
 EOF
 chmod 440 /etc/sudoers.d/terraform_temp
