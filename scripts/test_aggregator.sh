@@ -55,9 +55,9 @@ format_time() {
 
 # Print test header
 echo_header() {
-    echo -e "${BLUE}=======================================${NC}"
-    echo -e "${BLUE}    Aggregator Test Suite${NC}"
-    echo -e "${BLUE}=======================================${NC}"
+    echo -e "${BLUE}==================================================${NC}"
+    echo -e "${BLUE}    Test Suite for the echo server Aggregator${NC}"
+    echo -e "${BLUE}==================================================${NC}"
     echo ""
 }
 
@@ -72,12 +72,19 @@ run_test() {
   # Start timing the test
   TEST_START_TIME=$(get_time_ms)
   
-  # In non-verbose mode, we only print a dot for each test to indicate progress
+  # Extract a short test name for non-verbose mode (up to 20 chars)
+  local short_name="${test_name:0:20}"
+  # If truncated, add ellipsis
+  if [[ ${#test_name} -gt 20 ]]; then
+    short_name="${short_name}..."
+  fi
+  
+  # In verbose mode, show detailed test info, in non-verbose show compact version
   if [[ "$VERBOSE" == "true" ]]; then
     echo -e "${YELLOW}Running test:${NC} $test_name"
   else
-    # Print a dot without newline to show progress
-    echo -n "."
+    # Print the short test name without a newline
+    echo -n "[${short_name}] "
   fi
   
   # Capture command output for verbose mode
@@ -110,6 +117,9 @@ run_test() {
       local execution_time=$((end_time - TEST_START_TIME))
       TEST_TOTAL_TIME=$((TEST_TOTAL_TIME + execution_time))
       
+      # Show pass with execution time in non-verbose mode
+      echo -e "${GREEN}✓${NC} ($(format_time $execution_time))"
+      
       ((TESTS_PASSED++))
       return 0
     else
@@ -118,9 +128,9 @@ run_test() {
       local execution_time=$((end_time - TEST_START_TIME))
       TEST_TOTAL_TIME=$((TEST_TOTAL_TIME + execution_time))
       
-      # In case of failure, print a newline and the failure info even in non-verbose mode
-      echo ""
-      echo -e "${RED}✗ FAIL:${NC} $test_name ($(format_time $execution_time))"
+      # Show failure with execution time in non-verbose mode
+      echo -e "${RED}✗${NC} ($(format_time $execution_time))"
+      echo -e "${RED}FAIL:${NC} $test_name"
       echo -e "${YELLOW}Expected:${NC} $expected_result"
       ((TESTS_FAILED++))
       return 1
