@@ -1,10 +1,11 @@
+---
 name: Test
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   shellcheck:
@@ -15,24 +16,114 @@ jobs:
     - name: Run ShellCheck
       uses: ludeeus/action-shellcheck@master
       with:
-        scandir: './services/aggregator/scripts'
-        
-  terraform:
-    name: Terraform Validation
+        scandir: './scripts'
+
+  terraform-docker:
+    name: Terraform Docker Validation
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - uses: hashicorp/setup-terraform@v2
-    
+
     - name: Terraform Format
       run: terraform fmt -check -recursive
-      
-    - name: Terraform Init
+
+    - name: Terraform Init Docker
       run: |
         cd infrastructure/terraform-docker-cluster
         terraform init -backend=false
-        
-    - name: Terraform Validate
+
+    - name: Terraform Validate Docker
       run: |
         cd infrastructure/terraform-docker-cluster
         terraform validate
+
+  terraform-k8s:
+    name: Terraform K8s Validation
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: hashicorp/setup-terraform@v2
+
+    - name: Terraform Init K8s
+      run: |
+        cd infrastructure/terraform-k8s-control-plane/local
+        terraform init -backend=false
+
+    - name: Terraform Validate K8s
+      run: |
+        cd infrastructure/terraform-k8s-control-plane/local
+        terraform validate
+
+  yaml-lint:
+    name: YAML Linting
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install yamllint
+      run: pip install yamllint
+
+    - name: Run yamllint
+      run: yamllint kubernetes/ .github/
+
+  kubeval:
+    name: Kubernetes Schema Validation
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Download kubeval
+      run: |
+        wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz
+        tar xf kubeval-linux-amd64.tar.gz
+        sudo mv kubeval /usr/local/bin
+
+    - name: Validate Kubernetes manifests
+      run: |
+        find kubernetes/base -name '*.yaml' -type f -exec kubeval --strict --ignore-missing-schemas {} \;
+
+  kube-score:
+    name: Kubernetes Best Practices
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Download kube-score
+      run: |
+        wget https://github.com/zegl/kube-score/releases/download/v1.14.0/kube-score_1.14.0_linux_amd64
+        chmod +x kube-score_1.14.0_linux_amd64
+        sudo mv kube-score_1.14.0_linux_amd64 /usr/local/bin/kube-score
+
+    - name: Run kube-score
+      run: |
+        find kubernetes/base -name '*.yaml' -type f -exec kube-score score {} \;
+
+  kubectl-validation:
+    name: Kubernetes Resource Validation
+    runs-on: ubuntu-latest
+    needs: [kubeval, kube-score]
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+
+    - name: Validate namespace manifest
+      run: kubectl apply --dry-run=client -f kubernetes/base/namespaces.yaml -o yaml
+
+    - name: Validate aggregator manifests
+      run: kubectl apply --dry-run=client -f kubernetes/base/aggregator/ -o yaml
+
+    - name: Validate echo-services manifests
+      run: kubectl apply --dry-run=client -f kubernetes/base/echo-services/ -o yaml
+
+    - name: Verify manifest connections
+      run: |
+        echo "Checking service selector matching deployment labels..."
+        grep -A5 "selector:" kubernetes/base/aggregator/service.yaml
+        grep -A5 "labels:" kubernetes/base/aggregator/deployment.yaml

@@ -359,3 +359,52 @@ The project uses `jq` for test automation, which provides several advantages ove
 - **Type-aware Processing**: jq understands JSON data types (strings, numbers, arrays, objects) and handles them appropriately, while standard text processing tools treat everything as strings.
 
 This approach results in less brittle testing and more maintainable test scripts.
+
+# Kubernetes Testing Approaches - 2025-04-17
+
+As we migrate to Kubernetes, we need robust testing strategies that leverage industry-standard tools rather than custom scripts. After evaluating various options, we've identified the following testing approaches for our Kubernetes infrastructure:
+
+## 1. Static Analysis and Validation
+
+### Kubernetes Manifest Validation
+- **kubeval**: Open-source tool that validates Kubernetes manifests against the relevant schema
+- **kubernetes-json-schema**: Provides schemas for validating against specific K8s versions
+- **kube-score**: Static code analysis for Kubernetes objects that can identify misconfigurations
+- **pluto**: Detects deprecated Kubernetes APIs in manifests
+
+### YAML Syntax and Best Practices
+- **yamllint**: Linter for detecting syntax and formatting issues in YAML files
+- **conftest**: Tool for writing tests against structured configuration data using OPA's Rego language
+
+## 2. Policy Enforcement
+
+- **Open Policy Agent (OPA)**: Unified policy engine that can enforce custom policies across the Kubernetes stack
+- **Kyverno**: Kubernetes-native policy management without requiring a new language
+
+## 3. Security Scanning
+
+- **kubesec**: Security risk analysis for Kubernetes resources
+- **Trivy**: Container vulnerability scanner that can also scan Kubernetes manifests
+
+## 4. Infrastructure Testing
+
+- **KinD (Kubernetes in Docker)**: For running local validation of cluster configurations
+- **Terratest**: Go library for automated testing of infrastructure
+- **Goss**: Quick and easy server validation tool that can be used for verifying the state of Kubernetes resources
+
+## 5. CI/CD Integration
+
+- **GitHub Actions**: Provides pre-built actions for Kubernetes testing and deployment
+- **setup-kubectl action**: Official GitHub Action for setting up kubectl in workflows
+- **kubernetes-action**: For interacting with Kubernetes clusters in GitHub Actions
+
+## Selected Approach
+
+For our GitHub Actions workflow, we'll implement a multi-layered testing strategy emphasizing standard Kubernetes tools:
+
+1. **Syntax Validation**: Use yamllint to catch basic YAML syntax issues
+2. **Schema Validation**: Implement kubeval to validate Kubernetes manifests against K8s schemas
+3. **Best Practices**: Apply kube-score to identify potential improvements and misconfigurations
+4. **kubectl Validation**: Use kubectl's built-in validation capabilities with `--dry-run=client` to verify resource definitions
+
+This approach emphasizes standard tools over custom scripts or third-party cluster solutions, ensures comprehensive validation, and integrates well with our existing CI/CD processes. After careful consideration, we've decided to use standard Kubernetes tooling rather than introducing additional complexity with KinD or other local cluster solutions. This aligns with our goal of maintaining simplicity while maximizing learning and flexibility, and ensures our tests validate against actual Kubernetes APIs rather than simulated environments.
