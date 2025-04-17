@@ -178,6 +178,54 @@ Troubleshooting the aggregator service in Docker containers has been challenging
 
 Currently, the service works perfectly when run locally but has container lifecycle issues in Docker. The temporary solution is using Terraform's restart policy while we continue investigating better approaches for the Kubernetes migration.
 
+# Terraform Testing Options - 2025-04-16
+
+As we move toward validating our infrastructure-as-code implementation, we've investigated various options for testing Terraform configurations. Here's a comprehensive overview of the available tools and frameworks:
+
+## 1. Terraform Validation Tools
+
+- **terraform validate**: The built-in command that checks syntax and internal consistency
+- **terraform plan**: Used to verify expected changes before applying
+- **tflint**: A popular linter that can find possible errors and enforce best practices
+
+## 2. Unit and Integration Testing Frameworks
+
+- **Terratest**: A Go library specifically built for testing Terraform code
+- **Kitchen-Terraform**: Integrates Test Kitchen with Terraform for testing infrastructure
+- **Terraform Testing Framework (built-in)**: Native testing framework starting in Terraform 0.15+
+- **Terragrunt**: For testing and managing complex, multi-environment Terraform configurations
+
+## 3. Automated Testing Tools
+
+- **Checkov**: Static code analysis tool for scanning Terraform for misconfigurations
+- **Terrascan**: Security vulnerability scanner for Terraform
+- **Conftest**: Tool for writing tests against structured configuration data
+- **Sentinel**: HashiCorp's policy as code framework (requires Terraform Enterprise/Cloud)
+
+## 4. Infrastructure Testing
+
+- **InSpec**: Tests the actual deployed infrastructure against expected states
+- **Goss**: Quick and easy server validation
+- **Serverspec**: RSpec tests for your servers
+
+## 5. CI/CD Pipeline Integration
+
+- **GitHub Actions** or **GitLab CI** with terraform workflows
+- **Atlantis**: Pull request automation and preview for Terraform
+- **Terraform Cloud**: Built-in CI/CD pipeline specifically for Terraform
+
+## Selected Approach
+
+For our project, we'll implement a multi-layered testing strategy using:
+
+1. **Basic Configuration Validation**: terraform validate/plan and tflint for syntax and best practices
+2. **Security Scanning**: Terrascan for identifying security issues
+3. **Infrastructure Testing**: Serverspec for validating the actual running infrastructure
+4. **Native Tests**: Terraform Testing Framework for comprehensive validation
+5. **CI/CD Integration**: GitHub Actions to automate all testing on commits/PRs
+
+This approach balances thoroughness with practicality, providing multiple layers of validation while maintaining a straightforward implementation.
+
 # Test-Driven Development Implementation - 2025-04-16
 
 Today we implemented a comprehensive test-driven development infrastructure for the Kubernetes Windsurf project, focusing on the aggregator service and metrics functionality. This represents a significant step toward ensuring reliability and reproducibility as we prepare for Kubernetes migration.

@@ -255,3 +255,89 @@ Test scripts are designed to be run at multiple stages of development:
 4. **Deployment Validation**: After deployment to verify environment setup
 
 The test-driven approach facilitates the future migration to Kubernetes by establishing clear expectations for service behavior and providing a foundation for Kubernetes-specific tests.
+
+---
+
+# Infrastructure Testing Strategy
+
+## Overview
+The project implements a comprehensive infrastructure testing strategy to ensure our Terraform configurations are correct, secure, and reliably deployable. This multi-layered approach validates infrastructure at several levels, from static code analysis to runtime verification.
+
+## Design Principles
+
+1. **Multi-layered Validation**
+   - Static code analysis for syntax and best practices
+   - Security scanning for vulnerabilities
+   - Runtime testing for actual behavior
+   - Native functionality tests for comprehensive validation
+
+2. **Automation First**
+   - All tests integrated into CI/CD pipeline
+   - Pre-commit hooks for local validation
+   - Reproducible test execution across environments
+
+3. **Security by Design**
+   - Proactive scanning for security vulnerabilities
+   - Enforcement of security best practices
+   - Regular auditing of configuration changes
+
+4. **Infrastructure as Code Integrity**
+   - Ensure infrastructure matches configuration
+   - Prevent configuration drift
+   - Validate expected resources are created correctly
+
+## Implementation Stack
+
+### Configuration Validation
+- **Terraform Validate**: Built-in syntax and consistency checking
+- **Terraform Plan**: Preview changes and verify expected outcomes
+- **TFLint**: Advanced linting for best practices enforcement
+
+### Security Testing
+- **Terrascan**: Security vulnerability scanning for infrastructure code
+- **Custom Security Checks**: Project-specific security validations
+
+### Runtime Testing
+- **Serverspec**: Testing actual deployed infrastructure against specifications
+- **HTTP/API Tests**: Validating service endpoints and behavior
+
+### Comprehensive Testing
+- **Terraform Testing Framework**: Native HCL-based tests for validating resources
+- **Custom Test Scripts**: Targeted tests for specific project requirements
+
+### CI/CD Integration
+- **GitHub Actions**: Workflow automation for all test stages
+- **Test Reporting**: Comprehensive reporting of test results
+- **Deployment Gates**: Preventing deployments that don't pass tests
+
+## Implementation Details
+
+### GitHub Actions Workflow
+The CI/CD pipeline includes the following stages:
+
+1. **Validation Stage**
+   - Run `terraform validate` and `terraform plan`
+   - Execute TFLint with project-specific rules
+   - Fail fast if configuration issues are detected
+
+2. **Security Scanning Stage**
+   - Run Terrascan against all Terraform files
+   - Compare results against baseline/allowlist
+   - Generate security reports
+
+3. **Deployment Test Stage**
+   - Apply configuration to test environment
+   - Run Serverspec tests against deployed infrastructure
+   - Verify all services are functioning correctly
+
+4. **Native Testing Stage**
+   - Execute Terraform Testing Framework tests
+   - Validate specific resource properties and conditions
+   - Ensure compliance with project standards
+
+### Local Development Flow
+Developers can run a subset of tests locally using:
+
+1. Pre-commit hooks for validation and linting
+2. Local test scripts for quick feedback
+3. Docker-based testing environment for consistent results
