@@ -199,9 +199,38 @@ async fn main() {
             let server_future = axum::serve(listener, app);
             println!("[aggregator] Server future created, awaiting...");
             
-            // Run the server and handle any errors
-            if let Err(e) = server_future.await {
-                println!("[aggregator] Server error: {}", e);
+            // Create a signal handler to keep the server running until interrupted
+            let shutdown_signal = async {
+                println!("[aggregator] Setting up graceful shutdown handler");
+                // Wait for a SIGINT or SIGTERM signal
+                tokio::signal::ctrl_c()
+                    .await
+                    .expect("Failed to install signal handler");
+                println!("[aggregator] Received shutdown signal");
+            };
+
+            // Create a never-ending task that keeps the runtime alive
+            let keepalive = tokio::spawn(async {
+                println!("[aggregator] Starting keepalive task");
+                loop {
+                    println!("[aggregator] Keepalive heartbeat");
+                    tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+                }
+            });
+            
+            // Run the server with graceful shutdown
+            tokio::select! {
+                result = server_future => {
+                    if let Err(e) = result {
+                        println!("[aggregator] Server error: {}", e);
+                    }
+                },
+                _ = shutdown_signal => {
+                    println!("[aggregator] Shutting down gracefully");
+                },
+                _ = keepalive => {
+                    println!("[aggregator] Keepalive task exited unexpectedly");
+                }
             }
             println!("[aggregator] Server exited");
         },
