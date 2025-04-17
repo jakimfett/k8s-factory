@@ -14,8 +14,27 @@ RUN cargo build --release
 # Use a minimal base image for running
 FROM debian:bookworm-slim
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends libssl3 ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Create a simple wrapper script
+RUN echo '#!/bin/bash\necho "[wrapper] Starting aggregator service"\n/app/aggregator' > /app/start.sh && \
+    chmod +x /app/start.sh
+
+# Install required dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libssl3 ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy the aggregator binary
 COPY --from=builder /usr/src/aggregator/target/release/aggregator /app/aggregator
+
+# Set environment variables for logging
+ENV RUST_BACKTRACE=1
+
+# Expose port
 EXPOSE 3000
-#CMD ["/app/aggregator"]
-CMD ["/bin/sh", "-c", "echo 'got here'; sleep 3;/app/aggregator; echo 'got after'; sleep 6"]
+
+# Set container to be interactive with TTY allocation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Use the wrapper script
+CMD ["/app/start.sh"]

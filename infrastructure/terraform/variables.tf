@@ -3,3 +3,10 @@ variable "echo_count" {
   type        = number
   default     = 3
 }
+
+variable "enable_visualization" {
+  description = "Whether to enable Grafana for metrics visualization"
+  type        = bool
+  default     = false
+}
+

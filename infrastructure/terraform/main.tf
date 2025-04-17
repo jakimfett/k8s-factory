@@ -51,6 +51,12 @@ resource "docker_container" "aggregator" {
   name  = "aggregator"
   image = docker_image.aggregator.name
   env   = ["ECHO_URLS=${local.echo_urls_csv}"]
+  
+  # Keep container running
+  #restart = "always"
+  #stdin_open = true
+  #tty = true
+  
   networks_advanced {
     name = docker_network.echo_net.name
   }
